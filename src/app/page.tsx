@@ -1,9 +1,8 @@
 import React from 'react';
-import Head from 'next/head';
 
 export default function LandingPage() {
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-200 selection:bg-cyan-500/30">
+    <div className="min-h-screen bg-slate-950 text-slate-200 selection:bg-cyan-500/30 font-sans">
       {/* Navigation */}
       <nav className="fixed top-0 w-full z-50 bg-slate-950/80 backdrop-blur-md border-b border-slate-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -12,11 +11,11 @@ export default function LandingPage() {
               <div className="w-8 h-8 bg-cyan-500 rounded-sm flex items-center justify-center font-bold text-slate-950">BI</div>
               <span className="text-xl font-bold tracking-tight text-white">BLACK INTELLISENSE</span>
             </div>
-            <div className="hidden md:flex space-x-8 text-sm font-medium">
-              <a href="#problem" className="hover:text-cyan-400 transition-colors">The Problem</a>
-              <a href="#products" className="hover:text-cyan-400 transition-colors">Products</a>
-              <a href="#philosophy" className="hover:text-cyan-400 transition-colors">Philosophy</a>
-              <a href="mailto:support@blackintellisense.com" className="bg-cyan-600 hover:bg-cyan-500 text-white px-4 py-2 rounded-md transition-all">Schedule Demo</a>
+            <div className="hidden md:flex items-center space-x-8 text-sm font-medium">
+              <a href="#features" className="hover:text-cyan-400 transition-colors">Products</a>
+              <a href="#mission" className="hover:text-cyan-400 transition-colors">Mission</a>
+              <a href="#contact" className="hover:text-cyan-400 transition-colors">Contact</a>
+              <a href="#contact" className="bg-cyan-600 hover:bg-cyan-500 text-white px-4 py-2 rounded-md transition-all">Get Started</a>
             </div>
           </div>
         </div>
@@ -31,152 +30,133 @@ export default function LandingPage() {
         
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h1 className="text-5xl lg:text-7xl font-extrabold tracking-tighter text-white mb-6">
-            Infrastructure for <span className="text-transparent bg-clip-text bg-gradient-to-r from-cyan-400 to-blue-500">Modern Markets</span>
+            Black IntelliSense
           </h1>
           <p className="max-w-2xl mx-auto text-xl text-slate-400 mb-10">
-            Building the Intelligence Between Liquidity and Markets. A single intelligent layer for global financial institutions.
+            Building the Intelligence Between Liquidity and Markets.
           </p>
           <div className="flex flex-col sm:flex-row justify-center gap-4">
-            <button className="bg-cyan-600 hover:bg-cyan-500 text-white px-8 py-4 rounded-lg font-semibold text-lg shadow-lg shadow-cyan-900/20 transition-all">
-              Explore Infrastructure
-            </button>
-            <button className="bg-slate-900 hover:bg-slate-800 border border-slate-700 px-8 py-4 rounded-lg font-semibold text-lg transition-all">
-              Read Documentation
-            </button>
+            <a href="#features" className="bg-cyan-600 hover:bg-cyan-500 text-white px-8 py-4 rounded-lg font-semibold text-lg shadow-lg shadow-cyan-900/20 transition-all inline-block">
+              Discover Platform
+            </a>
+            <a href="#contact" className="bg-slate-900 hover:bg-slate-800 border border-slate-700 px-8 py-4 rounded-lg font-semibold text-lg transition-all inline-block">
+              Contact Sales
+            </a>
           </div>
         </div>
       </section>
 
-      {/* Problem Section */}
-      <section id="problem" className="py-24 bg-slate-900/50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid lg:grid-cols-2 gap-16 items-center">
-            <div>
-              <h2 className="text-sm font-semibold tracking-widest text-cyan-500 uppercase mb-3">The Challenge</h2>
-              <h3 className="text-3xl lg:text-4xl font-bold text-white mb-6">Fragmentation Kills Efficiency</h3>
-              <p className="text-lg text-slate-400 mb-8">
-                Liquidity sources are scattered across multiple venues, execution systems operate in silos, and settlement workflows remain manual and error-prone.
-              </p>
-              <ul className="space-y-4">
-                {[
-                  'Disconnected Systems',
-                  'Manual & Error-Prone Workflows',
-                  'Liquidity Fragmentation',
-                  'Operational Risk'
-                ].map((item) => (
-                  <li key={item} className="flex items-center gap-3 text-slate-300">
-                    <div className="w-5 h-5 rounded-full bg-red-500/20 flex items-center justify-center">
-                      <div className="w-2 h-2 rounded-full bg-red-500"></div>
-                    </div>
-                    {item}
-                  </li>
-                ))}
-              </ul>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="aspect-square bg-slate-800 rounded-2xl border border-slate-700 p-8 flex flex-col justify-end">
-                <span className="text-4xl font-bold text-white mb-2">Manual</span>
-                <span className="text-slate-500 uppercase text-xs tracking-widest">Settlement</span>
-              </div>
-              <div className="aspect-square bg-cyan-950/20 rounded-2xl border border-cyan-500/30 p-8 flex flex-col justify-end translate-y-8">
-                <span className="text-4xl font-bold text-cyan-400 mb-2">Automated</span>
-                <span className="text-slate-500 uppercase text-xs tracking-widest">Black IntelliSense</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Products Section */}
-      <section id="products" className="py-24">
+      {/* Features Section */}
+      <section id="features" className="py-24 bg-slate-900/50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
-            <h2 className="text-sm font-semibold tracking-widest text-cyan-500 uppercase mb-3">Our Suite</h2>
-            <h3 className="text-4xl font-bold text-white">Modular Architecture</h3>
+            <h2 className="text-sm font-semibold tracking-widest text-cyan-500 uppercase mb-3">Our Technology</h2>
+            <h3 className="text-4xl font-bold text-white mb-4">Core Infrastructure</h3>
+            <p className="text-slate-400">Advanced tools designed for the next generation of financial markets.</p>
           </div>
           
           <div className="grid md:grid-cols-2 gap-8">
             {/* Sense 50 */}
             <div className="group bg-slate-900 border border-slate-800 rounded-3xl p-10 hover:border-cyan-500/50 transition-all">
-              <div className="w-14 h-14 bg-cyan-600 rounded-xl mb-8 flex items-center justify-center text-white text-2xl font-bold italic">S50</div>
-              <h4 className="text-2xl font-bold text-white mb-4">Sense 50 (Bridge Engine)</h4>
-              <p className="text-slate-400 mb-8">
-                A high-performance price aggregation and execution engine for institutional environments.
+              <div className="w-14 h-14 bg-cyan-600/10 border border-cyan-500/20 rounded-xl mb-8 flex items-center justify-center text-cyan-400 text-2xl font-bold italic">S50</div>
+              <h4 className="text-2xl font-bold text-white mb-4">Bridge Engine (Sense 50)</h4>
+              <p className="text-slate-400">
+                High-performance price aggregation and execution engine bridging Market Makers/LPs with Brokers/OTC desks.
               </p>
-              <ul className="space-y-3 mb-8">
-                {['Real-time aggregation', 'Sub-millisecond latency', 'Full dealer control', 'Multi-asset support'].map(f => (
-                  <li key={f} className="flex items-center gap-2 text-sm text-slate-300">
-                    <svg className="w-4 h-4 text-cyan-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
-                    {f}
-                  </li>
-                ))}
-              </ul>
-              <button className="text-cyan-400 font-semibold group-hover:gap-2 flex items-center gap-1 transition-all">
-                Learn more <span>→</span>
-              </button>
             </div>
 
             {/* IntelliTrade */}
             <div className="group bg-slate-900 border border-slate-800 rounded-3xl p-10 hover:border-blue-500/50 transition-all">
-              <div className="w-14 h-14 bg-blue-600 rounded-xl mb-8 flex items-center justify-center text-white text-2xl font-bold italic">IT</div>
-              <h4 className="text-2xl font-bold text-white mb-4">IntelliTrade (OTC Platform)</h4>
-              <p className="text-slate-400 mb-8">
-                Professional OTC trading interface tailored for institutional clients and OTC Desks.
+              <div className="w-14 h-14 bg-blue-600/10 border border-blue-500/20 rounded-xl mb-8 flex items-center justify-center text-blue-400 text-2xl font-bold italic">IT</div>
+              <h4 className="text-2xl font-bold text-white mb-4">OTC Trading Platform (IntelliTrade)</h4>
+              <p className="text-slate-400">
+                Professional interface for institutional environments. Seamlessly execute large block trades with zero slippage.
               </p>
-              <ul className="space-y-3 mb-8">
-                {['Institutional-grade UX', 'Dealer markup control', 'Client Portal', 'Secure Trade Confirmation'].map(f => (
-                  <li key={f} className="flex items-center gap-2 text-sm text-slate-300">
-                    <svg className="w-4 h-4 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M5 13l4 4L19 7"></path></svg>
-                    {f}
-                  </li>
-                ))}
-              </ul>
-              <button className="text-blue-400 font-semibold group-hover:gap-2 flex items-center gap-1 transition-all">
-                Learn more <span>→</span>
-              </button>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Philosophy Section */}
-      <section id="philosophy" className="py-24 bg-slate-900/30">
+      {/* Mission Section */}
+      <section id="mission" className="py-24 overflow-hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid md:grid-cols-3 gap-12">
+          <div className="grid lg:grid-cols-2 gap-16 items-center">
             <div>
-              <div className="text-4xl font-bold text-cyan-500 mb-4">01</div>
-              <h5 className="text-xl font-bold text-white mb-3">Infrastructure First</h5>
-              <p className="text-slate-400">We are not a broker. We do not compete with our clients. We only provide the technology.</p>
+              <h2 className="text-sm font-semibold tracking-widest text-cyan-500 uppercase mb-3">Our Mission</h2>
+              <h3 className="text-3xl lg:text-4xl font-bold text-white mb-6">Connecting the Fragmented World of Liquidity</h3>
+              <p className="text-lg text-slate-400 mb-8 leading-relaxed">
+                We exist to bridge the gap between institutional liquidity providers and the brokers who need them. By automating settlement and providing real-time aggregation, we're building the nervous system of modern finance.
+              </p>
+              
+              <div className="grid grid-cols-2 gap-6 mb-10">
+                {[
+                  { title: 'Real-time Aggregation', icon: '⚡' },
+                  { title: 'Payment Reconciliation', icon: '📊' },
+                  { title: 'OTC Simplification', icon: '💎' },
+                  { title: 'Liquidity Hub', icon: '🌐' }
+                ].map((item) => (
+                  <div key={item.title} className="flex items-center gap-3">
+                    <span className="text-2xl">{item.icon}</span>
+                    <span className="text-sm font-medium text-slate-300">{item.title}</span>
+                  </div>
+                ))}
+              </div>
+
+              <button className="bg-slate-800 hover:bg-slate-700 text-white px-6 py-3 rounded-lg flex items-center gap-2 transition-all">
+                <span>Download our deck</span>
+                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path></svg>
+              </button>
             </div>
-            <div>
-              <div className="text-4xl font-bold text-cyan-500 mb-4">02</div>
-              <h5 className="text-xl font-bold text-white mb-3">Accuracy Over Speed</h5>
-              <p className="text-slate-400">While latency matters, accuracy in execution and settlement is our top priority for modern markets.</p>
-            </div>
-            <div>
-              <div className="text-4xl font-bold text-cyan-500 mb-4">03</div>
-              <h5 className="text-xl font-bold text-white mb-3">Scalability</h5>
-              <p className="text-slate-400">Built to handle institutional volume and multi-asset classes as your business grows globally.</p>
+            
+            <div className="relative">
+              <div className="absolute inset-0 bg-gradient-to-tr from-cyan-500/20 to-transparent blur-3xl -z-10"></div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="aspect-video bg-slate-900 rounded-xl border border-slate-800"></div>
+                <div className="aspect-video bg-slate-900 rounded-xl border border-slate-800 mt-8"></div>
+                <div className="aspect-video bg-slate-900 rounded-xl border border-slate-800 -mt-8"></div>
+                <div className="aspect-video bg-slate-900 rounded-xl border border-slate-800"></div>
+              </div>
             </div>
           </div>
+        </div>
+      </section>
+
+      {/* Contact Section */}
+      <section id="contact" className="py-24 bg-slate-900/30">
+        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <h2 className="text-3xl lg:text-4xl font-bold text-white mb-6">Get in Touch</h2>
+          <p className="text-slate-400 mb-12">Ready to modernize your liquidity infrastructure? Send us a message.</p>
+          
+          <form className="space-y-6 text-left">
+            <div className="grid sm:grid-cols-2 gap-6">
+              <div>
+                <label className="block text-sm font-medium text-slate-400 mb-2">Name</label>
+                <input type="text" placeholder="John Doe" className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 focus:outline-none focus:border-cyan-500 transition-colors" />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-400 mb-2">Email</label>
+                <input type="email" placeholder="john@company.com" className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 focus:outline-none focus:border-cyan-500 transition-colors" />
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-slate-400 mb-2">Message</label>
+              <textarea rows={4} placeholder="Tell us about your needs..." className="w-full bg-slate-950 border border-slate-800 rounded-lg px-4 py-3 focus:outline-none focus:border-cyan-500 transition-colors"></textarea>
+            </div>
+            <button className="w-full bg-cyan-600 hover:bg-cyan-500 text-white py-4 rounded-lg font-bold transition-all">Send Message</button>
+          </form>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="py-20 border-t border-slate-800">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <div className="flex justify-center items-center gap-2 mb-8">
+      <footer className="py-12 border-t border-slate-800 bg-slate-950">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row justify-between items-center gap-8">
+          <div className="flex items-center gap-2">
             <div className="w-6 h-6 bg-cyan-500 rounded-sm flex items-center justify-center font-bold text-slate-950 text-xs">BI</div>
-            <span className="text-lg font-bold tracking-tight text-white uppercase">Black IntelliSense</span>
+            <span className="text-lg font-bold tracking-tight text-white">BLACK INTELLISENSE</span>
           </div>
-          <p className="text-slate-500 text-sm mb-8">
-            © 2026 Black IntelliSense. All rights reserved. <br />
-            Infrastructure for Modern Markets.
-          </p>
-          <div className="flex justify-center gap-6 text-slate-400">
-            <a href="#" className="hover:text-white">LinkedIn</a>
-            <a href="#" className="hover:text-white">Twitter</a>
-            <a href="mailto:support@blackintellisense.com" className="hover:text-white">Contact</a>
+          <div className="text-slate-500 text-sm text-center md:text-left">
+            <p>© 2026 Black IntelliSense. All rights reserved.</p>
+            <p className="mt-1">PT. PERDAGANGAN TEKNOLOGI INTELLISENSE</p>
           </div>
         </div>
       </footer>
