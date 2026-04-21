@@ -17,7 +17,7 @@ export default function LandingPage() {
           <div className="flex justify-between h-20 items-center">
             <div className="flex items-center gap-3 group cursor-pointer">
               <div className="relative">
-                <div className="w-10 h-10 bg-gradient-to-br from-blue-600 to-blue-400 rounded-lg flex items-center justify-center font-bold text-black rotate-3 group-hover:rotate-0 transition-transform duration-300 shadow-[0_0_20px_rgba(59,130,246,0.5)]">BI</div>
+                <img src="/logo.jpg" alt="Black IntelliSense Logo" className="w-12 h-12 object-contain rounded-lg shadow-[0_0_20px_rgba(59,130,246,0.3)] group-hover:scale-110 transition-transform duration-300" />
               </div>
               <div className="flex flex-col leading-none">
                 <span className="text-xl font-black tracking-tighter italic">BLACK INTELLI<span className="text-blue-500">SENSE</span></span>
@@ -158,19 +158,11 @@ export default function LandingPage() {
               </button>
             </div>
             
-            <div className="lg:w-1/2 relative">
-               <div className="grid grid-cols-2 gap-6 scale-110">
-                <div className="space-y-6">
-                  <div className="aspect-[4/3] bg-gradient-to-br from-blue-600/20 to-transparent border border-white/10 rounded-3xl backdrop-blur-2xl"></div>
-                  <div className="aspect-square bg-gradient-to-bl from-blue-400/20 to-transparent border border-white/10 rounded-3xl backdrop-blur-2xl"></div>
-                </div>
-                <div className="space-y-6 pt-12">
-                  <div className="aspect-square bg-gradient-to-tr from-white/10 to-transparent border border-white/10 rounded-3xl backdrop-blur-2xl"></div>
-                  <div className="aspect-[4/3] bg-gradient-to-tl from-blue-900/40 to-transparent border border-white/10 rounded-3xl backdrop-blur-2xl"></div>
-                </div>
-              </div>
-              {/* Visual Aura */}
-              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[140%] h-[140%] bg-blue-600/10 blur-[150px] -z-10 rounded-full"></div>
+            <div className="lg:w-1/2 relative flex justify-center">
+               <div className="relative group">
+                 <div className="absolute inset-0 bg-blue-600/20 blur-[100px] group-hover:bg-blue-600/40 transition-all duration-500 rounded-full"></div>
+                 <img src="/logo.jpg" alt="Black IntelliSense Corporate Logo" className="relative z-10 w-80 h-80 object-contain drop-shadow-[0_0_50px_rgba(59,130,246,0.4)] animate-pulse" style={{ animationDuration: '4s' }} />
+               </div>
             </div>
           </div>
         </div>
@@ -204,7 +196,7 @@ export default function LandingPage() {
         <div className="max-w-7xl mx-auto">
           <div className="flex flex-col md:flex-row justify-between items-center gap-12 mb-16">
             <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-blue-600 rounded flex items-center justify-center font-bold text-black text-xs">BI</div>
+              <img src="/logo.jpg" alt="Logo" className="w-8 h-8 object-contain" />
               <span className="text-xl font-black italic tracking-tighter">BLACK INTELLISENSE</span>
             </div>
             <div className="flex gap-12 text-[10px] font-black uppercase tracking-[0.4em] text-white/40">
