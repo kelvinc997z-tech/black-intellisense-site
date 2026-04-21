@@ -134,7 +134,7 @@ export default function LandingPage() {
                 <img src="/logo.jpg" alt="Logo" className="relative w-14 h-14 object-contain rounded-xl transition-all duration-700 group-hover:scale-110 group-hover:rotate-[360deg]" />
               </div>
               <div className="flex flex-col leading-none">
-                <span className="text-3xl font-black tracking-tighter italic uppercase">BLACKINTELLISENSE</span>
+                <span className="text-3xl font-black tracking-tighter italic uppercase text-white">BLACKINTELLI<span className="text-blue-500">SENSE</span></span>
                 <span className="text-[8px] font-black tracking-[0.6em] text-white/20 mt-1 uppercase">Infrastructure v.15</span>
               </div>
             </div>
@@ -418,7 +418,7 @@ export default function LandingPage() {
               <div className="absolute inset-0 bg-blue-500 blur-3xl opacity-20 group-hover:opacity-60 transition-all duration-1000"></div>
               <img src="/logo.jpg" className="w-24 h-24 object-contain relative z-10 group-hover:scale-110 transition-transform duration-1000" alt="Footer Logo" />
             </div>
-            <span className="text-6xl md:text-8xl font-black italic tracking-[-0.05em] uppercase text-center leading-none">BLACKINTELLISENSE</span>
+            <span className="text-6xl md:text-8xl font-black italic tracking-[-0.05em] uppercase text-center leading-none text-white">BLACKINTELLI<span className="text-blue-500">SENSE</span></span>
             <div className="h-[2px] w-48 bg-gradient-to-r from-transparent via-blue-500 to-transparent"></div>
             <p className="text-white/30 text-[12px] font-black uppercase tracking-[1em] text-center italic">Infrastructure for Modern Markets</p>
           </div>
