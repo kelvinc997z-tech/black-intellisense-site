@@ -81,11 +81,11 @@ export default function LandingPage() {
           
           <div className="grid md:grid-cols-2 gap-8">
             {/* Sense 50 */}
-            <div className="group relative bg-[#0a0a0a] border border-white/10 rounded-[2.5rem] p-12 hover:border-blue-500/50 transition-all duration-500 overflow-hidden">
+            <div className="group relative bg-[#0a0a0a] border border-white/10 rounded-[2.5rem] p-12 hover:border-blue-500/50 transition-all duration-500 overflow-hidden flex flex-col">
               <div className="absolute top-0 right-0 w-64 h-64 bg-blue-600/5 blur-[100px] group-hover:bg-blue-600/10 transition-all"></div>
               <div className="text-blue-500 font-black text-8xl opacity-5 absolute -top-8 -right-8 group-hover:opacity-10 transition-all">50</div>
               
-              <div className="relative z-10">
+              <div className="relative z-10 flex-grow">
                 <div className="w-16 h-16 bg-blue-600 rounded-2xl mb-10 flex items-center justify-center shadow-lg shadow-blue-600/20">
                   <svg className="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
                 </div>
@@ -93,10 +93,21 @@ export default function LandingPage() {
                 <p className="text-lg text-white/50 mb-10 leading-relaxed">
                   High-performance price aggregation and execution engine. The ultra-low latency bridge between Market Makers and Institutional Desks.
                 </p>
-                <div className="flex flex-wrap gap-3">
+                <div className="flex flex-wrap gap-3 mb-10">
                   {['Sub-ms Latency', 'Smart Routing', 'L2 Liquidity'].map(tag => (
                     <span key={tag} className="px-4 py-1.5 rounded-full bg-white/5 border border-white/10 text-[11px] font-bold uppercase tracking-widest text-white/60">{tag}</span>
                   ))}
+                </div>
+              </div>
+
+              {/* Dashboard Preview Overlay */}
+              <div className="relative mt-auto pt-6 border-t border-white/5 group-hover:border-blue-500/20 transition-colors">
+                <div className="rounded-xl overflow-hidden border border-white/10 shadow-2xl group-hover:scale-[1.02] transition-transform duration-500">
+                  <img src="/sense50-preview.jpg" alt="Sense 50 Dashboard Interface" className="w-full h-auto opacity-80 group-hover:opacity-100 transition-opacity" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-60"></div>
+                </div>
+                <div className="absolute top-10 left-4 bg-blue-600 text-[10px] font-black px-2 py-0.5 rounded flex items-center gap-1 animate-pulse">
+                  <span className="w-1.5 h-1.5 bg-white rounded-full"></span> LIVE INTERFACE
                 </div>
               </div>
             </div>
