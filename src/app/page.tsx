@@ -171,9 +171,9 @@ export default function LandingPage() {
             A Single Intelligent Layer for Global Markets
           </div>
           
-          <h1 className="text-7xl md:text-[11rem] font-black tracking-[-0.05em] text-white mb-12 leading-[0.8] uppercase italic mix-blend-difference">
+          <h1 className="text-5xl md:text-7xl font-black tracking-tighter text-white mb-10 leading-[1.1] uppercase italic mix-blend-difference">
             <span className="block animate-in fade-in slide-in-from-bottom-20 duration-1000 delay-100 fill-mode-both">Modern</span>
-            <span className="text-transparent bg-clip-text bg-gradient-to-br from-white via-blue-500 to-blue-900 animate-in fade-in slide-in-from-bottom-20 duration-1000 delay-400 fill-mode-both drop-shadow-[0_20px_50px_rgba(59,130,246,0.3)]">Infrastructure</span>
+            <span className="text-transparent bg-clip-text bg-gradient-to-br from-white via-blue-500 to-blue-900 animate-in fade-in slide-in-from-bottom-20 duration-1000 delay-400 fill-mode-both drop-shadow-[0_10px_30px_rgba(59,130,246,0.2)]">Infrastructure</span>
           </h1>
           
           <p className="max-w-4xl mx-auto text-xl md:text-3xl text-white/40 mb-20 font-medium leading-[1.4] tracking-tight animate-in fade-in duration-1000 delay-600 fill-mode-both px-4">
@@ -239,7 +239,7 @@ export default function LandingPage() {
       <section id="products" className="relative py-60 z-10 overflow-hidden">
         <div className="max-w-7xl mx-auto px-8 text-center">
           <h2 className="text-blue-500 font-black text-[12px] tracking-[1em] uppercase mb-10 italic opacity-50 reveal">02 // The Solution</h2>
-          <h3 className="text-7xl md:text-[14rem] font-black text-white leading-[0.75] tracking-tighter uppercase mb-48 italic reveal">Proprietary <br /> Ecosystem</h3>
+          <h3 className="text-5xl md:text-7xl font-black text-white leading-[1] tracking-tighter uppercase mb-24 italic reveal">Proprietary <br /> Ecosystem</h3>
           
           <div className="grid lg:grid-cols-2 gap-24 text-left">
             {/* Sense 50 */}
@@ -384,7 +384,7 @@ export default function LandingPage() {
             <div className="absolute -top-[20%] -right-[20%] w-full h-full bg-blue-600/10 blur-[200px] rounded-full group-hover/form:bg-blue-600/20 transition-all duration-1000"></div>
             
             <div className="relative z-10 text-center mb-32">
-               <h2 className="text-7xl md:text-[14rem] font-black tracking-[-0.04em] text-white mb-12 uppercase italic leading-[0.7] drop-shadow-[0_20px_100px_rgba(0,0,0,0.9)] animate-pulse-slow">Connect <br /> The Future</h2>
+               <h2 className="text-5xl md:text-7xl font-black tracking-tighter text-white mb-10 uppercase italic leading-[1] drop-shadow-2xl animate-pulse-slow">Connect <br /> The Future</h2>
                <p className="text-2xl md:text-4xl text-blue-300 font-bold uppercase tracking-[0.6em] italic opacity-60">Global Institutional Onboarding</p>
             </div>
             
@@ -418,7 +418,7 @@ export default function LandingPage() {
               <div className="absolute inset-0 bg-blue-500 blur-3xl opacity-20 group-hover:opacity-60 transition-all duration-1000"></div>
               <img src="/logo.jpg" className="w-24 h-24 object-contain relative z-10 group-hover:scale-110 transition-transform duration-1000" alt="Footer Logo" />
             </div>
-            <span className="text-6xl md:text-8xl font-black italic tracking-[-0.05em] uppercase text-center leading-none text-white">BLACKINTELLI<span className="text-blue-500">SENSE</span></span>
+            <span className="text-5xl md:text-7xl font-black italic tracking-[-0.05em] uppercase text-center leading-none text-white">BLACKINTELLI<span className="text-blue-500">SENSE</span></span>
             <div className="h-[2px] w-48 bg-gradient-to-r from-transparent via-blue-500 to-transparent"></div>
             <p className="text-white/30 text-[12px] font-black uppercase tracking-[1em] text-center italic">Infrastructure for Modern Markets</p>
           </div>
