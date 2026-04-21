@@ -41,13 +41,13 @@ export default function LandingPage() {
       <nav className="fixed top-0 w-full z-50 border-b border-white/5 bg-black/40 backdrop-blur-xl">
         <div className="max-w-7xl mx-auto px-6">
           <div className="flex justify-between h-20 items-center">
-            <div className="flex items-center gap-4 group cursor-pointer">
+            <div className="flex items-center gap-4 group cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
               <div className="relative">
-                <div className="absolute inset-0 bg-blue-500 blur-md opacity-0 group-hover:opacity-40 transition-opacity"></div>
-                <img src="/logo.jpg" alt="Black IntelliSense Logo" className="relative w-10 h-10 object-contain rounded-lg transition-transform duration-500 group-hover:scale-110" />
+                <div className="absolute inset-0 bg-blue-500 blur-md opacity-0 group-hover:opacity-60 transition-opacity"></div>
+                <img src="/logo.jpg" alt="Black IntelliSense Logo" className="relative w-11 h-11 object-contain rounded-lg transition-all duration-700 group-hover:scale-110 group-hover:rotate-[360deg]" />
               </div>
               <div className="flex flex-col leading-none">
-                <span className="text-xl font-black tracking-tighter italic">BLACK INTELLI<span className="text-blue-500">SENSE</span></span>
+                <span className="text-2xl font-black tracking-tighter italic">BLACK INTELLI<span className="text-blue-500">SENSE</span></span>
               </div>
             </div>
             <div className="hidden md:flex items-center space-x-10 text-[11px] font-black uppercase tracking-[0.3em] text-white/40">
@@ -80,13 +80,13 @@ export default function LandingPage() {
             Institutional Grade Infrastructure
           </div>
           
-          <h1 className="text-7xl md:text-9xl font-black tracking-tighter text-white mb-10 leading-[0.85] uppercase">
-            Elevating <br />
-            <span className="text-transparent bg-clip-text bg-gradient-to-b from-blue-400 via-blue-600 to-blue-800">Market Intelligence</span>
+          <h1 className="text-7xl md:text-[10rem] font-black tracking-tighter text-white mb-10 leading-[0.75] uppercase animate-in slide-in-from-bottom-24 duration-1000 ease-out">
+            The New <br />
+            <span className="text-transparent bg-clip-text bg-gradient-to-br from-white via-blue-500 to-blue-900 drop-shadow-[0_0_30px_rgba(59,130,246,0.3)]">Standard</span>
           </h1>
           
-          <p className="max-w-2xl mx-auto text-xl md:text-2xl text-white/40 mb-14 font-medium leading-relaxed tracking-tight">
-            The intelligent nexus between <span className="text-white">liquidity providers</span> and <span className="text-white">global markets</span>. Precision-engineered for scale.
+          <p className="max-w-3xl mx-auto text-xl md:text-3xl text-white/40 mb-16 font-medium leading-relaxed tracking-tight animate-in fade-in slide-in-from-bottom-12 duration-1000 delay-300 fill-mode-both">
+            The intelligent nexus between <span className="text-white hover:text-blue-400 transition-colors cursor-default">liquidity providers</span> and <span className="text-white hover:text-blue-400 transition-colors cursor-default">global markets</span>. Precision-engineered for institutional scale.
           </p>
           
           <div className="flex flex-col sm:flex-row justify-center gap-8">
@@ -113,16 +113,16 @@ export default function LandingPage() {
           <div className="grid lg:grid-cols-2 gap-12">
             {/* Sense 50 */}
             <div className="group relative bg-gradient-to-b from-[#0f172a] to-black border border-white/5 rounded-[3rem] p-1 shadow-2xl transition-all duration-700 hover:scale-[1.02] hover:border-blue-500/30">
-              <div className="bg-black/40 backdrop-blur-3xl rounded-[2.9rem] p-10 md:p-16 h-full flex flex-col">
-                <div className="flex justify-between items-start mb-16">
-                  <div className="w-20 h-20 bg-blue-600 rounded-3xl flex items-center justify-center shadow-2xl shadow-blue-600/40 rotate-6 group-hover:rotate-0 transition-transform duration-500">
-                    <svg className="w-10 h-10 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+              <div className="bg-black/60 backdrop-blur-3xl rounded-[2.9rem] p-10 md:p-20 h-full flex flex-col border border-white/5 group-hover:border-blue-500/40 transition-all duration-700 shadow-[inset_0_0_50px_rgba(59,130,246,0.05)]">
+                <div className="flex justify-between items-start mb-20">
+                  <div className="w-24 h-24 bg-blue-600 rounded-[2rem] flex items-center justify-center shadow-[0_0_50px_rgba(59,130,246,0.5)] group-hover:shadow-[0_0_80px_rgba(59,130,246,0.8)] rotate-6 group-hover:rotate-0 transition-all duration-700 ease-out">
+                    <svg className="w-12 h-12 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
                   </div>
-                  <div className="text-white/10 font-black text-9xl leading-none tracking-tighter select-none">50</div>
+                  <div className="text-white/5 font-black text-[12rem] leading-none tracking-tighter select-none group-hover:text-blue-500/10 transition-colors duration-700">50</div>
                 </div>
                 
-                <h4 className="text-4xl font-black text-white mb-6 uppercase italic">Sense 50 <span className="text-blue-500 block text-sm tracking-[0.3em] font-black not-italic mt-2">Aggregator & Bridge</span></h4>
-                <p className="text-xl text-white/40 mb-12 leading-relaxed font-medium">
+                <h4 className="text-5xl font-black text-white mb-8 uppercase italic tracking-tighter group-hover:text-blue-400 transition-colors">Sense 50 <span className="text-blue-500 block text-xs tracking-[0.5em] font-black not-italic mt-3 opacity-60 group-hover:opacity-100 transition-opacity">LIQUIDITY AGGREGATOR</span></h4>
+                <p className="text-2xl text-white/40 mb-14 leading-relaxed font-bold tracking-tight">
                   The ultra-low latency bridge. Aggregating depth from global venues into a single intelligent stream.
                 </p>
 
@@ -140,16 +140,16 @@ export default function LandingPage() {
 
             {/* IntelliTrade */}
             <div className="group relative bg-gradient-to-b from-[#1e1b4b] to-black border border-white/5 rounded-[3rem] p-1 shadow-2xl transition-all duration-700 hover:scale-[1.02] hover:border-blue-400/30">
-              <div className="bg-black/40 backdrop-blur-3xl rounded-[2.9rem] p-10 md:p-16 h-full flex flex-col">
-                <div className="flex justify-between items-start mb-16">
-                  <div className="w-20 h-20 bg-white rounded-3xl flex items-center justify-center shadow-2xl shadow-white/10 -rotate-6 group-hover:rotate-0 transition-transform duration-500">
-                    <svg className="w-10 h-10 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+              <div className="bg-black/60 backdrop-blur-3xl rounded-[2.9rem] p-10 md:p-20 h-full flex flex-col border border-white/5 group-hover:border-blue-400/40 transition-all duration-700 shadow-[inset_0_0_50px_rgba(96,165,250,0.05)]">
+                <div className="flex justify-between items-start mb-20">
+                  <div className="w-24 h-24 bg-white rounded-[2rem] flex items-center justify-center shadow-[0_0_50px_rgba(255,255,255,0.1)] group-hover:shadow-[0_0_80px_rgba(59,130,246,0.3)] -rotate-6 group-hover:rotate-0 transition-all duration-700 ease-out">
+                    <svg className="w-12 h-12 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2.5" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
                   </div>
-                  <div className="text-white/10 font-black text-9xl leading-none tracking-tighter select-none uppercase">IT</div>
+                  <div className="text-white/5 font-black text-[12rem] leading-none tracking-tighter select-none uppercase group-hover:text-blue-400/10 transition-colors duration-700">IT</div>
                 </div>
                 
-                <h4 className="text-4xl font-black text-white mb-6 uppercase italic">IntelliTrade <span className="text-blue-400 block text-sm tracking-[0.3em] font-black not-italic mt-2">OTC Portal</span></h4>
-                <p className="text-xl text-white/40 mb-12 leading-relaxed font-medium">
+                <h4 className="text-5xl font-black text-white mb-8 uppercase italic tracking-tighter group-hover:text-blue-400 transition-colors">IntelliTrade <span className="text-blue-400 block text-xs tracking-[0.5em] font-black not-italic mt-3 opacity-60 group-hover:opacity-100 transition-opacity">OTC TRADING PORTAL</span></h4>
+                <p className="text-2xl text-white/40 mb-14 leading-relaxed font-bold tracking-tight">
                   Secure, high-touch OTC execution. Built for large block trades with proprietary algorithms ensuring zero slippage.
                 </p>
 
