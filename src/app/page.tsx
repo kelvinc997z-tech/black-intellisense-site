@@ -113,11 +113,11 @@ export default function LandingPage() {
             </div>
 
             {/* IntelliTrade */}
-            <div className="group relative bg-[#0a0a0a] border border-white/10 rounded-[2.5rem] p-12 hover:border-blue-500/50 transition-all duration-500 overflow-hidden">
+            <div className="group relative bg-[#0a0a0a] border border-white/10 rounded-[2.5rem] p-12 hover:border-blue-500/50 transition-all duration-500 overflow-hidden flex flex-col">
               <div className="absolute top-0 right-0 w-64 h-64 bg-blue-600/5 blur-[100px] group-hover:bg-blue-600/10 transition-all"></div>
               <div className="text-blue-500 font-black text-8xl opacity-5 absolute -top-8 -right-8 group-hover:opacity-10 transition-all">IT</div>
 
-              <div className="relative z-10">
+              <div className="relative z-10 flex-grow">
                 <div className="w-16 h-16 bg-white rounded-2xl mb-10 flex items-center justify-center shadow-lg shadow-white/5">
                   <svg className="w-8 h-8 text-black" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
                 </div>
@@ -125,10 +125,21 @@ export default function LandingPage() {
                 <p className="text-lg text-white/50 mb-10 leading-relaxed">
                   Professional interface for institutional environments. Seamlessly execute large block trades with proprietary zero-slippage algorithms.
                 </p>
-                <div className="flex flex-wrap gap-3">
+                <div className="flex flex-wrap gap-3 mb-10">
                   {['Block Execution', 'Audit Ready', 'Multi-Asset'].map(tag => (
                     <span key={tag} className="px-4 py-1.5 rounded-full bg-white/5 border border-white/10 text-[11px] font-bold uppercase tracking-widest text-white/60">{tag}</span>
                   ))}
+                </div>
+              </div>
+
+              {/* Dashboard Preview Overlay */}
+              <div className="relative mt-auto pt-6 border-t border-white/5 group-hover:border-blue-500/20 transition-colors">
+                <div className="rounded-xl overflow-hidden border border-white/10 shadow-2xl group-hover:scale-[1.02] transition-transform duration-500">
+                  <img src="/mission-1.jpg" alt="IntelliTrade OTC Platform Interface" className="w-full h-auto opacity-80 group-hover:opacity-100 transition-opacity" />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-60"></div>
+                </div>
+                <div className="absolute top-10 left-4 bg-white text-black text-[10px] font-black px-2 py-0.5 rounded flex items-center gap-1 animate-pulse">
+                  <span className="w-1.5 h-1.5 bg-black rounded-full"></span> OTC PORTAL
                 </div>
               </div>
             </div>
@@ -169,11 +180,27 @@ export default function LandingPage() {
               </button>
             </div>
             
-            <div className="lg:w-1/2 relative flex justify-center">
-               <div className="relative group">
-                 <div className="absolute inset-0 bg-blue-600/20 blur-[100px] group-hover:bg-blue-600/40 transition-all duration-500 rounded-full"></div>
-                 <img src="/logo.jpg" alt="Black IntelliSense Corporate Logo" className="relative z-10 w-80 h-80 object-contain drop-shadow-[0_0_50px_rgba(59,130,246,0.4)] animate-pulse" style={{ animationDuration: '4s' }} />
-               </div>
+            <div className="lg:w-1/2 relative">
+               <div className="grid grid-cols-2 gap-6 scale-110">
+                <div className="space-y-6">
+                  <div className="aspect-[4/3] bg-slate-900 border border-white/10 rounded-3xl overflow-hidden shadow-2xl group hover:scale-105 transition-transform duration-500">
+                    <img src="/mission-2.jpg" alt="Price Feeds" className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity" />
+                  </div>
+                  <div className="aspect-square bg-slate-900 border border-white/10 rounded-3xl overflow-hidden shadow-2xl group hover:scale-105 transition-transform duration-500">
+                    <img src="/mission-3.jpg" alt="Order Management" className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity" />
+                  </div>
+                </div>
+                <div className="space-y-6 pt-12">
+                  <div className="aspect-square bg-slate-900 border border-white/10 rounded-3xl overflow-hidden shadow-2xl group hover:scale-105 transition-transform duration-500">
+                    <img src="/mission-4.jpg" alt="Sense 50 Dashboard" className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity" />
+                  </div>
+                  <div className="aspect-[4/3] bg-slate-900 border border-white/10 rounded-3xl overflow-hidden shadow-2xl group hover:scale-105 transition-transform duration-500">
+                    <img src="/mission-1.jpg" alt="IntelliTrade Portal" className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity" />
+                  </div>
+                </div>
+              </div>
+              {/* Visual Aura */}
+              <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[140%] h-[140%] bg-blue-600/10 blur-[150px] -z-10 rounded-full"></div>
             </div>
           </div>
         </div>
