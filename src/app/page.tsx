@@ -183,19 +183,31 @@ export default function LandingPage() {
             <div className="lg:w-1/2 relative">
                <div className="grid grid-cols-2 gap-6 scale-110">
                 <div className="space-y-6">
-                  <div className="aspect-[4/3] bg-slate-900 border border-white/10 rounded-3xl overflow-hidden shadow-2xl group hover:scale-105 transition-transform duration-500">
+                  <div className="aspect-[4/3] bg-slate-900 border border-white/10 rounded-3xl overflow-hidden shadow-2xl group hover:scale-105 transition-transform duration-500 relative">
                     <img src="/mission-2.jpg" alt="Price Feeds" className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity" />
+                    <div className="absolute bottom-4 left-4 bg-black/60 backdrop-blur-md px-3 py-1 rounded-full border border-white/10 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <span className="text-[10px] font-black tracking-widest text-blue-400">PRICE AGGREGATION</span>
+                    </div>
                   </div>
-                  <div className="aspect-square bg-slate-900 border border-white/10 rounded-3xl overflow-hidden shadow-2xl group hover:scale-105 transition-transform duration-500">
+                  <div className="aspect-square bg-slate-900 border border-white/10 rounded-3xl overflow-hidden shadow-2xl group hover:scale-105 transition-transform duration-500 relative">
                     <img src="/mission-3.jpg" alt="Order Management" className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity" />
+                    <div className="absolute bottom-4 left-4 bg-black/60 backdrop-blur-md px-3 py-1 rounded-full border border-white/10 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <span className="text-[10px] font-black tracking-widest text-blue-400">ORDER MANAGEMENT</span>
+                    </div>
                   </div>
                 </div>
                 <div className="space-y-6 pt-12">
-                  <div className="aspect-square bg-slate-900 border border-white/10 rounded-3xl overflow-hidden shadow-2xl group hover:scale-105 transition-transform duration-500">
+                  <div className="aspect-square bg-slate-900 border border-white/10 rounded-3xl overflow-hidden shadow-2xl group hover:scale-105 transition-transform duration-500 relative">
                     <img src="/mission-4.jpg" alt="Sense 50 Dashboard" className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity" />
+                    <div className="absolute bottom-4 left-4 bg-black/60 backdrop-blur-md px-3 py-1 rounded-full border border-white/10 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <span className="text-[10px] font-black tracking-widest text-blue-400">SENSE 50 ANALYTICS</span>
+                    </div>
                   </div>
-                  <div className="aspect-[4/3] bg-slate-900 border border-white/10 rounded-3xl overflow-hidden shadow-2xl group hover:scale-105 transition-transform duration-500">
-                    <img src="/mission-1.jpg" alt="IntelliTrade Portal" className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity" />
+                  <div className="aspect-[4/3] bg-slate-900 border border-white/10 rounded-3xl overflow-hidden shadow-2xl group hover:scale-105 transition-transform duration-500 relative">
+                    <img src="/intellitrade-preview.jpg" alt="IntelliTrade Portal" className="w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-opacity" />
+                    <div className="absolute bottom-4 left-4 bg-black/60 backdrop-blur-md px-3 py-1 rounded-full border border-white/10 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <span className="text-[10px] font-black tracking-widest text-blue-400">OTC PORTAL</span>
+                    </div>
                   </div>
                 </div>
               </div>
