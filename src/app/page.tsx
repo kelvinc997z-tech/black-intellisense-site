@@ -107,7 +107,7 @@ export default function LandingPage() {
         <canvas id="network-canvas" className="absolute inset-0 opacity-40"></canvas>
       </div>
 
-      {/* Lightbox / Zoom Modal */}
+      {/* Navigation */}
       <nav className="fixed top-0 w-full z-50 border-b border-white/5 bg-black/40 backdrop-blur-xl">
         <div className="max-w-7xl mx-auto px-6">
           <div className="flex justify-between h-20 items-center">
@@ -249,10 +249,16 @@ export default function LandingPage() {
                 "We eliminate friction between institutional liquidity and the providers who scale it."
               </p>
               
-              <button className="group bg-black text-white px-12 py-6 rounded-full font-black text-xl hover:bg-blue-600 transition-all flex items-center gap-6 shadow-2xl">
+              <a 
+                href="/Black_IntelliSense_Deck.pdf" 
+                download="Black_IntelliSense_Deck.pdf"
+                className="group bg-black text-white px-12 py-6 rounded-full font-black text-xl hover:bg-blue-600 transition-all flex items-center gap-6 shadow-2xl inline-block"
+              >
                 <span>Download Deck</span>
-                <svg className="w-5 h-5 group-hover:translate-y-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M19 14l-7 7-7-7"></path></svg>
-              </button>
+                <div className="w-10 h-10 bg-white/10 rounded-full flex items-center justify-center group-hover:translate-y-2 transition-transform">
+                   <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="3" d="M19 14l-7 7-7-7m12-8l-7 7-7-7"></path></svg>
+                </div>
+              </a>
             </div>
             
             <div className="lg:w-[55%]">
