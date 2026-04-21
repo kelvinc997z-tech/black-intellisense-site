@@ -135,7 +135,7 @@ export default function LandingPage() {
               {/* Dashboard Preview Overlay */}
               <div className="relative mt-auto pt-6 border-t border-white/5 group-hover:border-blue-500/20 transition-colors">
                 <div className="rounded-xl overflow-hidden border border-white/10 shadow-2xl group-hover:scale-[1.02] transition-transform duration-500">
-                  <img src="/mission-1.jpg" alt="IntelliTrade OTC Platform Interface" className="w-full h-auto opacity-80 group-hover:opacity-100 transition-opacity" />
+                  <img src="/intellitrade-preview.jpg" alt="IntelliTrade OTC Platform Interface" className="w-full h-auto opacity-80 group-hover:opacity-100 transition-opacity" />
                   <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent opacity-60"></div>
                 </div>
                 <div className="absolute top-10 left-4 bg-white text-black text-[10px] font-black px-2 py-0.5 rounded flex items-center gap-1 animate-pulse">
