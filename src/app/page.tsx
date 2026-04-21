@@ -4,6 +4,7 @@ import React, { useState, useEffect } from 'react';
 
 export default function LandingPage() {
   const [activeImage, setActiveImage] = useState<string | null>(null);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const missionImages = [
     { src: '/mission-2.jpg', title: 'PRICE AGGREGATION', desc: 'Real-time multi-exchange price feeds.' },
@@ -106,18 +107,37 @@ export default function LandingPage() {
             <div className="flex items-center gap-4 group cursor-pointer" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>
               <div className="relative">
                 <div className="absolute inset-0 bg-blue-500 blur-md opacity-0 group-hover:opacity-60 transition-opacity"></div>
-                <img src="/logo.jpg" alt="Black IntelliSense Logo" className="relative w-11 h-11 object-contain rounded-lg transition-all duration-700 group-hover:scale-110 group-hover:rotate-[360deg]" />
+                <img src="/logo.jpg" alt="Black IntelliSense Logo" className="relative w-11 h-11 object-contain rounded-lg transition-all duration-700 group-hover:scale-110" />
               </div>
               <div className="flex flex-col leading-none">
-                <span className="text-2xl font-black tracking-tighter italic">BLACK INTELLI<span className="text-blue-500">SENSE</span></span>
+                <span className="text-xl md:text-2xl font-black tracking-tighter italic uppercase">BLACK <span className="text-blue-500">INTELLI</span></span>
               </div>
             </div>
-            <div className="hidden md:flex items-center space-x-10 text-[11px] font-black uppercase tracking-[0.3em] text-white/40">
+
+            {/* Desktop Menu */}
+            <div className="hidden lg:flex items-center space-x-10 text-[11px] font-black uppercase tracking-[0.3em] text-white/40">
               <a href="#challenge" className="hover:text-white transition-colors relative group">Problem<span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-blue-500 group-hover:w-full transition-all duration-300"></span></a>
               <a href="#products" className="hover:text-white transition-colors relative group">Suite<span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-blue-500 group-hover:w-full transition-all duration-300"></span></a>
               <a href="#philosophy" className="hover:text-white transition-colors relative group">Philosophy<span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-blue-500 group-hover:w-full transition-all duration-300"></span></a>
               <a href="#contact" className="bg-blue-600 text-white px-8 py-3 rounded-full hover:bg-white hover:text-black transition-all duration-500 shadow-[0_0_20px_rgba(59,130,246,0.3)] font-black italic uppercase text-[10px] tracking-widest">Connect</a>
             </div>
+
+            {/* Mobile Menu Toggle */}
+            <button className="lg:hidden text-white p-2" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
+              <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d={mobileMenuOpen ? "M6 18L18 6M6 6l12 12" : "M4 6h16M4 12h16m-7 6h7"}></path>
+              </svg>
+            </button>
+          </div>
+        </div>
+
+        {/* Mobile menu overlay */}
+        <div className={`lg:hidden fixed inset-x-0 top-20 bg-black/95 backdrop-blur-2xl border-b border-white/5 transition-all duration-500 overflow-hidden ${mobileMenuOpen ? 'max-h-96 opacity-100' : 'max-h-0 opacity-0 pointer-events-none'}`}>
+          <div className="p-8 flex flex-col gap-6 text-center font-black uppercase tracking-[0.4em] text-sm">
+            <a href="#challenge" onClick={() => setMobileMenuOpen(false)} className="text-white/60 hover:text-blue-400 py-2">Problem</a>
+            <a href="#products" onClick={() => setMobileMenuOpen(false)} className="text-white/60 hover:text-blue-400 py-2">Suite</a>
+            <a href="#philosophy" onClick={() => setMobileMenuOpen(false)} className="text-white/60 hover:text-blue-400 py-2">Philosophy</a>
+            <a href="#contact" onClick={() => setMobileMenuOpen(false)} className="bg-blue-600 text-white py-4 rounded-2xl">Connect</a>
           </div>
         </div>
       </nav>
@@ -150,38 +170,38 @@ export default function LandingPage() {
       </section>
 
       {/* The Fragmentation Problem */}
-      <section id="challenge" className="relative py-48 z-10 border-y border-white/5 bg-black/80 backdrop-blur-3xl">
+      <section id="challenge" className="relative py-24 md:py-48 z-10 border-y border-white/5 bg-black/80 backdrop-blur-3xl">
         <div className="max-w-7xl mx-auto px-6">
-          <div className="grid lg:grid-cols-2 gap-32 items-center">
+          <div className="grid lg:grid-cols-2 gap-16 md:gap-32 items-center">
             <div>
-              <h2 className="text-blue-500 font-black text-sm tracking-[0.5em] uppercase mb-10 italic">Chapter 01: The Problem</h2>
-              <h3 className="text-6xl font-black text-white mb-12 tracking-tighter leading-none uppercase">The Fragmentation <br /> Challenge</h3>
-              <p className="text-xl text-white/40 mb-16 font-bold leading-relaxed italic">
+              <h2 className="text-blue-500 font-black text-xs md:text-sm tracking-[0.5em] uppercase mb-6 md:mb-10 italic">Chapter 01: The Problem</h2>
+              <h3 className="text-4xl md:text-6xl font-black text-white mb-8 md:mb-12 tracking-tighter leading-none uppercase">The Fragmentation <br /> Challenge</h3>
+              <p className="text-lg md:text-xl text-white/40 mb-10 md:text-16 font-bold leading-relaxed italic">
                 "Liquidity sources are scattered, systems operate in silos, and settlement workflows remain manual and error-prone."
               </p>
-              <div className="space-y-8">
+              <div className="space-y-6 md:space-y-8">
                 {[
                   { t: 'Disconnected Systems', d: 'Lack of unified price discovery across disparate venues.' },
                   { t: 'Manual Workflows', d: 'High operational risk due to legacy settlement dependencies.' },
                   { t: 'Execution Silos', d: 'Isolated technology preventing end-to-end trade lifecycle visibility.' }
                 ].map((item) => (
-                  <div key={item.t} className="flex gap-6 group border-b border-white/5 pb-8 last:border-0">
-                    <div className="w-14 h-14 bg-white/5 rounded-2xl flex items-center justify-center border border-white/10 group-hover:bg-blue-600 group-hover:border-blue-500 transition-all shrink-0">
-                       <span className="text-blue-500 group-hover:text-white font-black text-xl italic">!</span>
+                  <div key={item.t} className="flex gap-4 md:gap-6 group border-b border-white/5 pb-6 last:border-0">
+                    <div className="w-12 h-12 md:w-14 md:h-14 bg-white/5 rounded-xl md:rounded-2xl flex items-center justify-center border border-white/10 shrink-0">
+                       <span className="text-blue-500 font-black text-lg italic">!</span>
                     </div>
                     <div>
-                      <h5 className="text-white font-black uppercase text-lg tracking-tighter mb-1">{item.t}</h5>
-                      <p className="text-white/40 text-sm font-bold leading-relaxed">{item.d}</p>
+                      <h5 className="text-white font-black uppercase text-base md:text-lg tracking-tighter mb-1">{item.t}</h5>
+                      <p className="text-white/40 text-xs md:text-sm font-bold leading-relaxed">{item.d}</p>
                     </div>
                   </div>
                 ))}
               </div>
             </div>
-            <div className="relative p-12 bg-white/5 rounded-[4rem] border border-white/5 backdrop-blur-2xl">
+            <div className="relative p-8 md:p-12 bg-white/5 rounded-[2.5rem] md:rounded-[4rem] border border-white/5 backdrop-blur-2xl">
                <div className="text-center">
-                  <div className="text-blue-500 font-black text-[10rem] italic tracking-tighter leading-none mb-4 drop-shadow-[0_0_50px_rgba(59,130,246,0.3)]">84%</div>
-                  <h6 className="text-white font-black uppercase tracking-[0.3em] text-sm">Target Risk Reduction</h6>
-                  <p className="mt-8 text-white/30 text-sm font-medium">By unifying liquidity, execution, and settlement into a single intelligent layer.</p>
+                  <div className="text-blue-500 font-black text-7xl md:text-[10rem] italic tracking-tighter leading-none mb-4 drop-shadow-[0_0_50px_rgba(59,130,246,0.3)]">84%</div>
+                  <h6 className="text-white font-black uppercase tracking-[0.3em] text-xs">Target Risk Reduction</h6>
+                  <p className="mt-6 md:mt-8 text-white/30 text-[10px] md:text-sm font-medium">By unifying liquidity, execution, and settlement into a single intelligent layer.</p>
                </div>
             </div>
           </div>
