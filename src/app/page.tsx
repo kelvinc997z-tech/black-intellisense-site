@@ -172,6 +172,57 @@ export default function LandingPage() {
         </div>
       </section>
 
+      {/* The Problem / Challenge Section */}
+      <section id="challenge" className="relative py-48 z-10 border-y border-white/5 bg-black/80 backdrop-blur-3xl">
+        <div className="max-w-7xl mx-auto px-6">
+          <div className="grid lg:grid-cols-2 gap-32 items-center">
+            <div>
+              <h2 className="text-blue-500 font-black text-sm tracking-[0.5em] uppercase mb-10">The Challenge</h2>
+              <h3 className="text-6xl font-black text-white mb-12 tracking-tighter leading-none uppercase">Market <br /> Fragmentation</h3>
+              <p className="text-2xl text-white/40 mb-16 font-bold leading-relaxed">
+                Liquidity is scattered. Systems are disconnected. Manual workflows are error-prone.
+              </p>
+              
+              <div className="space-y-8">
+                {[
+                  { t: 'Disconnected Systems', d: 'Liquidity sources scattered across multiple venues.' },
+                  { t: 'Manual Workflows', d: 'Settlement remains manual and prone to operational risk.' },
+                  { t: 'Execution Silos', d: 'Isolated systems preventing efficient trade lifecycles.' }
+                ].map((item) => (
+                  <div key={item.t} className="flex gap-6 group">
+                    <div className="w-12 h-12 bg-white/5 rounded-2xl flex items-center justify-center border border-white/10 group-hover:bg-blue-500 transition-colors shrink-0">
+                       <div className="w-2 h-2 bg-white rounded-full"></div>
+                    </div>
+                    <div>
+                      <h5 className="text-white font-black uppercase text-lg italic tracking-tighter mb-1">{item.t}</h5>
+                      <p className="text-white/40 text-sm font-bold leading-relaxed">{item.d}</p>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+            
+            <div className="relative aspect-square">
+               <div className="absolute inset-0 bg-blue-600/10 blur-[120px] rounded-full animate-pulse"></div>
+               <div className="relative h-full w-full border border-white/5 rounded-[4rem] p-12 bg-white/5 backdrop-blur-2xl flex flex-col justify-center items-center text-center">
+                  <div className="text-blue-500 font-black text-8xl mb-4 italic tracking-tighter leading-none">84%</div>
+                  <div className="text-white/40 font-black uppercase tracking-[0.4em] text-xs">Reduction in Operational Risk</div>
+                  <div className="mt-12 w-full h-px bg-gradient-to-r from-transparent via-white/10 to-transparent"></div>
+                  <div className="mt-12 space-y-4 text-left w-full max-w-xs mx-auto">
+                    <div className="h-2 w-full bg-white/5 rounded-full overflow-hidden">
+                      <div className="h-full w-[84%] bg-blue-600 shadow-[0_0_20px_rgba(59,130,246,0.5)]"></div>
+                    </div>
+                    <div className="flex justify-between text-[10px] font-black uppercase tracking-widest text-white/20">
+                      <span>Legacy Manual</span>
+                      <span className="text-blue-400">IntelliSense AI</span>
+                    </div>
+                  </div>
+               </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* Products Section */}
       <section id="products" className="relative py-48 z-10">
         <div className="max-w-7xl mx-auto px-6">
@@ -195,6 +246,20 @@ export default function LandingPage() {
                 <p className="text-lg text-white/40 mb-10 leading-relaxed font-bold tracking-tight">
                   The ultra-low latency bridge. Aggregating depth from global venues into a single intelligent stream.
                 </p>
+
+                <div className="grid grid-cols-2 gap-4 mb-12">
+                  {[
+                    { t: 'Sub-ms Latency', d: 'Ultra-fast execution' },
+                    { t: 'L2 Liquidity', d: 'Deep order books' },
+                    { t: 'Smart Routing', d: 'Optimized fills' },
+                    { t: 'Risk Control', d: 'Institutional safety' }
+                  ].map(f => (
+                    <div key={f.t} className="group/feat border-l border-white/10 pl-4 hover:border-blue-500 transition-colors">
+                      <div className="text-white font-black text-[10px] uppercase tracking-widest mb-1">{f.t}</div>
+                      <div className="text-white/30 text-[9px] font-bold uppercase tracking-[0.2em]">{f.d}</div>
+                    </div>
+                  ))}
+                </div>
 
                 <div 
                   className="relative mt-auto cursor-zoom-in group/img"
@@ -222,6 +287,20 @@ export default function LandingPage() {
                 <p className="text-lg text-white/40 mb-10 leading-relaxed font-bold tracking-tight">
                   Secure, high-touch OTC execution. Built for large block trades with proprietary algorithms ensuring zero slippage.
                 </p>
+
+                <div className="grid grid-cols-2 gap-4 mb-12">
+                  {[
+                    { t: 'Block Execution', d: 'Zero-slippage algo' },
+                    { t: 'Audit-Ready', d: 'Full trade history' },
+                    { t: 'Dealer Markup', d: 'Custom pricing' },
+                    { t: 'White-Label', d: 'Your brand, our tech' }
+                  ].map(f => (
+                    <div key={f.t} className="group/feat border-l border-white/10 pl-4 hover:border-blue-400 transition-colors">
+                      <div className="text-white font-black text-[10px] uppercase tracking-widest mb-1">{f.t}</div>
+                      <div className="text-white/30 text-[9px] font-bold uppercase tracking-[0.2em]">{f.d}</div>
+                    </div>
+                  ))}
+                </div>
 
                 <div 
                   className="relative mt-auto cursor-zoom-in group/img"
