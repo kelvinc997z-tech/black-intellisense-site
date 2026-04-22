@@ -5,10 +5,12 @@ import {
   ShoppingCart, Wallet, ArrowRightLeft, ShieldCheck, Zap, Info, 
   ShieldAlert, Lock, Fingerprint, Activity, Cpu, Globe, 
   Key, RefreshCw, Layers, Server, Terminal, Radio, 
-  Database, BarChart3, ScanFace, FileDown, Eye, LayoutGrid, ListFilter
+  Database, BarChart3, ScanFace, FileDown, Eye, LayoutGrid, ListFilter, ExternalLink
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { ethers } from 'ethers';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 
 declare global {
   interface Window {
@@ -16,9 +18,9 @@ declare global {
   }
 }
 
-const CHAINS: Record<number, { name: string; usdt: string; symbol: string; color: string }> = {
-  56: { name: 'BSC-MAINNET', usdt: '0x55d3...7955', symbol: 'BNB', color: 'text-yellow-400' },
-  137: { name: 'POLYGON-POS', usdt: '0xc213...8e8f', symbol: 'POL', color: 'text-purple-400' }
+const CHAINS: Record<number, { name: string; usdt: string; symbol: string; color: string; explorer: string }> = {
+  56: { name: 'BSC-MAINNET', usdt: '0x55d3...7955', symbol: 'BNB', color: 'text-yellow-400', explorer: 'https://bscscan.com/tx/' },
+  137: { name: 'POLYGON-POS', usdt: '0xc213...8e8f', symbol: 'POL', color: 'text-purple-400', explorer: 'https://polygonscan.com/tx/' }
 };
 
 const ASSETS = [
@@ -95,6 +97,7 @@ const IntelliTradeV6 = () => {
         await new Promise(r => setTimeout(r, 800));
       }
 
+      const txHash = ethers.keccak256(ethers.toUtf8Bytes(Date.now().toString()));
       const v6Msg = `[BLACKINTELLISENSE PRO V6]\n` +
                     `---------------------------\n` +
                     `OP: OTC_SETTLEMENT\n` +
@@ -108,16 +111,33 @@ const IntelliTradeV6 = () => {
       await signer.signMessage(v6Msg);
       
       const newTrade = {
-        id: ethers.keccak256(ethers.toUtf8Bytes(Date.now().toString())).slice(0,12),
+        id: txHash.slice(0,12),
+        fullHash: txHash,
         date: new Date().toLocaleString(),
         asset: activeAsset.id,
         side: orderForm.side,
         amount: orderForm.amount,
-        total: (parseFloat(orderForm.amount) * currentPrice).toLocaleString('id-ID')
+        rate: currentPrice.toLocaleString('id-ID'),
+        total: (parseFloat(orderForm.amount) * currentPrice).toLocaleString('id-ID'),
+        chain: chainId ? CHAINS[chainId]?.name : 'Unknown'
       };
 
       setHistory([newTrade, ...history]);
-      toast.success("TRANSACTION_FINALIZED", { id: toastId, icon: <ShieldCheck className="text-emerald-500" /> });
+      
+      const explorerLink = chainId && CHAINS[chainId] ? `${CHAINS[chainId].explorer}${txHash}` : '#';
+      
+      toast.success("TRANSACTION_FINALIZED", { 
+        id: toastId, 
+        icon: <ShieldCheck className="text-emerald-500" />,
+        description: (
+          <div className="mt-2">
+            <p className="text-[10px] text-zinc-400 mb-2">Tx Hash: {txHash.slice(0,20)}...</p>
+            <a href={explorerLink} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-[10px] font-black text-blue-400 uppercase tracking-widest hover:text-white transition-colors">
+              <ExternalLink size={10} /> View on Explorer
+            </a>
+          </div>
+        )
+      });
       setOrderForm({ ...orderForm, amount: '' });
     } catch (err) {
       toast.error("ABORTED", { id: toastId });
@@ -126,10 +146,49 @@ const IntelliTradeV6 = () => {
     }
   };
 
+  const exportPDF = () => {
+    if (history.length === 0) return toast.error("No data to export");
+    
+    const doc = new jsPDF();
+    doc.setFillColor(0, 0, 0);
+    doc.rect(0, 0, 210, 297, 'F');
+    
+    doc.setTextColor(255, 255, 255);
+    doc.setFontSize(22);
+    doc.text('BLACKINTELLISENSE PRO V.6', 14, 22);
+    
+    doc.setFontSize(10);
+    doc.setTextColor(100, 100, 100);
+    doc.text('INSTITUTIONAL OTC AUDIT LOGS', 14, 30);
+    doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 35);
+
+    const tableData = history.map(t => [
+      t.id,
+      t.date,
+      t.asset,
+      t.side.toUpperCase(),
+      t.amount,
+      `Rp ${t.total}`,
+      t.chain
+    ]);
+
+    autoTable(doc, {
+      startY: 45,
+      head: [['Ticket ID', 'Timestamp', 'Asset', 'Side', 'Qty', 'Total IDR', 'Network']],
+      body: tableData,
+      theme: 'grid',
+      headStyles: { fillColor: [37, 99, 235], textColor: [255, 255, 255], fontStyle: 'bold' },
+      styles: { fontSize: 8, cellPadding: 3 },
+      alternateRowStyles: { fillColor: [240, 240, 240] },
+    });
+
+    doc.save(`IntelliTrade_Report_${Date.now()}.pdf`);
+    toast.success("PDF Report Generated Successfully");
+  };
+
   return (
     <div className="min-h-screen bg-[#010102] text-zinc-300 font-sans selection:bg-blue-600/50 overflow-hidden flex flex-col">
       
-      {/* V6 Cyber Overlay */}
       <div className="fixed inset-0 pointer-events-none z-0">
         <div className="absolute inset-0 bg-[linear-gradient(to_right,#111111_1px,transparent_1px),linear-gradient(to_bottom,#111111_1px,transparent_1px)] bg-[size:40px_40px] opacity-20"></div>
         <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_0%_0%,rgba(29,78,216,0.1),transparent_40%)]"></div>
@@ -137,7 +196,6 @@ const IntelliTradeV6 = () => {
 
       <div className="relative z-10 flex-1 flex flex-col p-4 md:p-6 lg:p-8 space-y-6 overflow-hidden">
         
-        {/* Institutional Header */}
         <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 border-b border-white/5 pb-6">
           <div className="flex items-center gap-6">
             <div className="p-3 bg-blue-600 rounded-sm shadow-[0_0_30px_rgba(37,99,235,0.4)] animate-pulse">
@@ -193,7 +251,7 @@ const IntelliTradeV6 = () => {
                    </div>
                    <div className="text-right">
                       <p className="text-[8px] text-zinc-600 tracking-widest uppercase mb-1">Vault Liquidity (PoR)</p>
-                      <p className="text-sm font-black text-zinc-300 font-mono tracking-tighter">${vaultLiquidity} USDT</p>
+                      <p className="text-sm font-black text-zinc-300 font-mono tracking-tighter font-mono">${vaultLiquidity} USDT</p>
                    </div>
                 </div>
 
@@ -221,8 +279,8 @@ const IntelliTradeV6 = () => {
                 </div>
               </div>
 
-              <div className="h-48 grid grid-cols-2 gap-6">
-                 <div className="bg-zinc-900/20 border border-white/5 p-6 flex flex-col gap-2 overflow-hidden">
+              <div className="h-48 grid grid-cols-2 gap-6 font-mono">
+                 <div className="bg-zinc-900/20 border border-white/5 p-6 flex flex-col gap-2 overflow-hidden font-mono">
                     <span className="text-[8px] font-black text-red-500/50 tracking-widest mb-2 uppercase">Sell Depth</span>
                     {[...Array(4)].map((_, i) => (
                       <div key={i} className="flex justify-between text-[9px] font-bold opacity-40 font-mono">
@@ -231,7 +289,7 @@ const IntelliTradeV6 = () => {
                       </div>
                     ))}
                  </div>
-                 <div className="bg-zinc-900/20 border border-white/5 p-6 flex flex-col gap-2 overflow-hidden">
+                 <div className="bg-zinc-900/20 border border-white/5 p-6 flex flex-col gap-2 overflow-hidden font-mono">
                     <span className="text-[8px] font-black text-emerald-500/50 tracking-widest mb-2 uppercase">Buy Depth</span>
                     {[...Array(4)].map((_, i) => (
                       <div key={i} className="flex justify-between text-[9px] font-bold opacity-40 font-mono">
@@ -243,7 +301,7 @@ const IntelliTradeV6 = () => {
               </div>
             </div>
 
-            <div className="col-span-12 lg:col-span-4 flex flex-col gap-6">
+            <div className="col-span-12 lg:col-span-4 flex flex-col gap-6 font-mono">
                <div className="flex-1 bg-[#050505] border border-white/10 p-8 flex flex-col relative overflow-hidden shadow-2xl">
                   <div className="absolute top-0 right-0 w-32 h-32 bg-blue-600/5 blur-3xl"></div>
                   
@@ -267,7 +325,7 @@ const IntelliTradeV6 = () => {
 
                        {orderForm.amount && (
                          <div className="bg-blue-600/5 border border-blue-500/20 p-6 space-y-4 animate-in slide-in-from-right-4">
-                            <div className="flex justify-between text-[8px] tracking-widest uppercase text-zinc-500">
+                            <div className="flex justify-between text-[8px] tracking-widest uppercase text-zinc-500 font-mono">
                                <span>Rate_Locked</span>
                                <span className="font-mono">Rp {currentPrice.toLocaleString('id-ID')}</span>
                             </div>
@@ -294,25 +352,25 @@ const IntelliTradeV6 = () => {
                    <h2 className="text-2xl font-black italic tracking-widest uppercase text-white font-heading">Trade History & Reports</h2>
                    <p className="text-[9px] text-zinc-600 tracking-widest font-bold uppercase italic">Institutional Audit Logs • Real-time Data</p>
                 </div>
-                <button className="flex items-center gap-2 px-6 py-3 border border-white/10 text-[9px] font-black uppercase tracking-widest hover:bg-white hover:text-black transition-all">
+                <button onClick={exportPDF} className="flex items-center gap-2 px-6 py-3 border border-white/10 text-[9px] font-black uppercase tracking-widest hover:bg-white hover:text-black transition-all">
                   <FileDown size={14} /> Export CSV/PDF
                 </button>
              </div>
              
              <div className="space-y-4">
                 {history.length > 0 ? history.map((trade, i) => (
-                  <div key={i} className="grid grid-cols-6 p-6 border border-white/5 bg-zinc-900/20 hover:bg-zinc-900/40 transition-all items-center">
+                  <div key={i} className="grid grid-cols-7 p-6 border border-white/5 bg-zinc-900/20 hover:bg-zinc-900/40 transition-all items-center">
                      <div className="flex flex-col">
                         <span className="text-[7px] text-zinc-600 uppercase mb-1">Ticket_ID</span>
                         <span className="text-xs font-bold text-blue-500 font-mono">{trade.id}</span>
                      </div>
                      <div className="flex flex-col">
                         <span className="text-[7px] text-zinc-600 uppercase mb-1">Timestamp</span>
-                        <span className="text-xs font-bold">{trade.date}</span>
+                        <span className="text-xs font-bold font-mono">{trade.date}</span>
                      </div>
                      <div className="flex flex-col">
                         <span className="text-[7px] text-zinc-600 uppercase mb-1">Asset</span>
-                        <span className="text-xs font-bold text-white">{trade.asset}</span>
+                        <span className="text-xs font-bold text-white font-heading">{trade.asset}</span>
                      </div>
                      <div className="flex flex-col">
                         <span className="text-[7px] text-zinc-600 uppercase mb-1">Operation</span>
@@ -326,25 +384,35 @@ const IntelliTradeV6 = () => {
                         <span className="text-[7px] text-zinc-600 uppercase mb-1">Total IDR</span>
                         <span className="text-sm font-black text-white italic tracking-tighter font-heading">Rp {trade.total}</span>
                      </div>
+                     <div className="flex flex-col text-right">
+                        <a 
+                          href={chainId && CHAINS[chainId] ? `${CHAINS[chainId].explorer}${trade.fullHash}` : '#'} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="flex items-center justify-end gap-1 text-[8px] font-black text-blue-400 uppercase tracking-widest hover:text-white transition-all"
+                        >
+                           <ExternalLink size={10} /> Explorer
+                        </a>
+                     </div>
                   </div>
                 )) : (
                   <div className="h-64 flex flex-col items-center justify-center border border-dashed border-white/5 rounded-sm">
                      <Database className="text-zinc-800 mb-4" size={48} />
-                     <p className="text-[9px] font-black uppercase tracking-widest text-zinc-700">No Audit Logs Found</p>
+                     <p className="text-[9px] font-black uppercase tracking-widest text-zinc-700 font-heading">No Audit Logs Found</p>
                   </div>
                 )}
              </div>
           </main>
         )}
 
-        <footer className="h-10 border-t border-white/5 flex items-center justify-between text-[7px] font-bold text-zinc-800 uppercase tracking-[0.5em]">
+        <footer className="h-10 border-t border-white/5 flex items-center justify-between text-[7px] font-bold text-zinc-800 uppercase tracking-[0.5em] font-mono">
            <div className="flex gap-10">
-              <span className="text-blue-900">BlackIntellisense_Protocol: v6.0.4-PRO</span>
+              <span className="text-blue-900">Protocol: v6.0.8-PRO</span>
               <span>Buffer: AES-1024-GCM</span>
-              <span>Connection: Node_Optimized</span>
+              <span>Handshake: Secure</span>
            </div>
            <div className="flex items-center gap-4">
-              {blocks.slice(0,3).map((b, i) => <span key={i} className="text-zinc-900 animate-pulse">LATEST_BLOCK: {b}</span>)}
+              {blocks.slice(0,2).map((b, i) => <span key={i} className="text-zinc-900 animate-pulse">LATEST_BLOCK: {b}</span>)}
            </div>
         </footer>
       </div>
@@ -359,7 +427,7 @@ const IntelliTradeV6 = () => {
         }
 
         body { font-family: var(--font-sans); }
-        .font-heading { font-family: var(--font-heading); }
+        .font-heading { font-family: var(--font-heading); font-weight: 900; }
         .font-mono { font-family: var(--font-mono); }
 
         ::-webkit-scrollbar { width: 3px; }
