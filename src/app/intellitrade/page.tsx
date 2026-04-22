@@ -196,14 +196,15 @@ const IntelliTradeV6 = () => {
 
       <div className="relative z-10 flex-1 flex flex-col p-4 md:p-6 lg:p-8 space-y-6 overflow-hidden">
         
-        <header className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 border-b border-white/5 pb-6">
+        <header className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-8 border-b border-white/5 pb-10">
           <div className="flex items-center gap-6">
-            <div className="p-3 bg-blue-600 rounded-sm shadow-[0_0_30px_rgba(37,99,235,0.4)] animate-pulse">
-              <Terminal size={24} className="text-white" />
+            <div className="relative group">
+              <div className="absolute inset-0 bg-blue-600/30 blur-2xl rounded-full group-hover:bg-blue-600/50 transition-all"></div>
+              <img src="/logo.jpg" alt="Logo" className="relative w-16 h-16 object-contain rounded-2xl shadow-[0_0_40px_rgba(37,99,235,0.3)]" />
             </div>
             <div>
-              <h1 className="text-2xl font-black tracking-[0.3em] text-white flex items-baseline gap-2 font-heading">
-                INTELLITRADE <span className="text-blue-500">V.6-PRO</span>
+              <h1 className="text-2xl font-black tracking-[0.3em] text-white flex items-baseline gap-2 font-heading uppercase italic">
+                INTELLITRADE <span className="text-blue-500 text-xl align-top">V.6-PRO</span>
               </h1>
               <p className="text-[7px] text-zinc-600 tracking-[1em] font-bold uppercase mt-1">Institutional Liquidity Nexus</p>
             </div>

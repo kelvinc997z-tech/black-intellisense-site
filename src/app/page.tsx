@@ -107,9 +107,7 @@ export default function LandingPage() {
       <nav className={`fixed top-0 w-full z-[100] transition-all duration-500 ${scrolled ? 'bg-black/80 backdrop-blur-2xl border-b border-white/5 py-4' : 'bg-transparent py-8'}`}>
         <div className="max-w-7xl mx-auto px-6 flex justify-between items-center">
           <div className="flex items-center gap-4 group cursor-pointer">
-            <div className="p-2 bg-blue-600 rounded-lg shadow-[0_0_20px_rgba(37,99,235,0.5)] group-hover:scale-110 transition-transform duration-500">
-              <Cpu size={20} className="text-white" />
-            </div>
+            <img src="/logo.jpg" alt="Logo" className="w-10 h-10 object-contain rounded-lg shadow-[0_0_20px_rgba(37,99,235,0.3)] group-hover:scale-110 transition-transform duration-500" />
             <span className="text-xl font-black tracking-tighter uppercase italic">
               BLACKINTELLI<span className="text-blue-500">SENSE</span>
             </span>
