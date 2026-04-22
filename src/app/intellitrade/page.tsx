@@ -5,6 +5,12 @@ import { ShoppingCart, Wallet } from 'lucide-react';
 import { toast } from 'sonner';
 import { ethers } from 'ethers';
 
+declare global {
+  interface Window {
+    ethereum?: any;
+  }
+}
+
 const IntelliTradePage = () => {
   const [bestPrice, setBestPrice] = useState<any>(null);
   const [account, setAccount] = useState<string | null>(null);

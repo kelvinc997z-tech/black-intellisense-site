@@ -3,6 +3,12 @@
 import React, { useState, useEffect } from 'react';
 import { ethers } from 'ethers';
 
+declare global {
+  interface Window {
+    ethereum?: any;
+  }
+}
+
 /**
  * Hook sederhana untuk menangani koneksi MetaMask & Sign-In (Message Signing)
  */
