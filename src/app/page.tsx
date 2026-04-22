@@ -18,7 +18,12 @@ export default function LandingPage() {
 
   const t = {
     EN: {
-      nav: ['Problem', 'Suite', 'Philosophy'],
+      nav: [
+        { name: 'Problem', href: '#problem' },
+        { name: 'Suite', href: '#suite' },
+        { name: 'Philosophy', href: '#philosophy' },
+        { name: 'IntelliTrade', href: '/intellitrade' }
+      ],
       hero: {
         badge: 'A Single Intelligent Layer for Global Markets',
         title1: 'Modern',
@@ -81,7 +86,12 @@ export default function LandingPage() {
       legal: 'PT. PERDAGANGAN TEKNOLOGI INTELLISENSE. ALL RIGHTS RESERVED. FOR INSTITUTIONAL COUNTERPARTIES ONLY.'
     },
     ID: {
-      nav: ['Masalah', 'Produk', 'Filosofi'],
+      nav: [
+        { name: 'Masalah', href: '#problem' },
+        { name: 'Produk', href: '#suite' },
+        { name: 'Filosofi', href: '#philosophy' },
+        { name: 'IntelliTrade', href: '/intellitrade' }
+      ],
       hero: {
         badge: 'Satu Lapisan Cerdas untuk Pasar Global',
         title1: 'Infrastruktur',
@@ -210,7 +220,17 @@ export default function LandingPage() {
             </div>
 
             <div className="hidden lg:flex items-center space-x-12">
-               {/* Lang Switcher */}
+              <div className="flex items-center space-x-8">
+                {curr.nav.map((item: any, i: number) => (
+                  <a 
+                    key={i} 
+                    href={item.href} 
+                    className={`text-[10px] font-black uppercase tracking-[0.4em] transition-all hover:text-blue-500 ${item.name === 'IntelliTrade' ? 'text-blue-400 border border-blue-500/20 px-3 py-1 rounded-full bg-blue-500/5' : 'text-white/40'}`}
+                  >
+                    {item.name}
+                  </a>
+                ))}
+              </div>
                <div className="flex bg-white/5 rounded-full p-1 border border-white/10">
                  <button onClick={() => setLang('EN')} className={`px-4 py-1.5 rounded-full text-[9px] font-black transition-all ${lang === 'EN' ? 'bg-white text-black shadow-xl' : 'text-white/40 hover:text-white'}`}>EN</button>
                  <button onClick={() => setLang('ID')} className={`px-4 py-1.5 rounded-full text-[9px] font-black transition-all ${lang === 'ID' ? 'bg-white text-black shadow-xl' : 'text-white/40 hover:text-white'}`}>ID</button>
