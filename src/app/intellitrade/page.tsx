@@ -13,14 +13,48 @@ declare global {
 
 const IntelliTradePage = () => {
   const [bestPrice, setBestPrice] = useState<any>(null);
+  const [rateIDR, setRateIDR] = useState<number>(16000);
   const [account, setAccount] = useState<string | null>(null);
   const [isConnecting, setIsConnecting] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
   const [orderForm, setOrderForm] = useState({
     symbol: 'USDT',
     side: 'buy' as 'buy' | 'sell',
     amount: '',
     price: ''
   });
+
+  // Fetch Live USD/IDR rate
+  useEffect(() => {
+    const fetchRate = async () => {
+      try {
+        const res = await fetch('https://api.exchangerate-api.com/v4/latest/USD');
+        const data = await res.json();
+        if (data.rates && data.rates.IDR) {
+          setRateIDR(data.rates.IDR);
+        }
+      } catch (err) {
+        console.error("Failed to fetch IDR rate", err);
+      }
+    };
+    fetchRate();
+    const interval = setInterval(fetchRate, 60000); // Update every minute
+    return () => clearInterval(interval);
+  }, []);
+
+  useEffect(() => {
+    fetchPrice();
+    const interval = setInterval(fetchPrice, 5000);
+    return () => clearInterval(interval);
+  }, [orderForm.side, rateIDR]);
+
+  const fetchPrice = async () => {
+    // Basic spreads based on USD/IDR live rate
+    const basePrice = rateIDR;
+    const mockPrice = orderForm.side === 'buy' ? basePrice + 15 : basePrice - 15;
+    setBestPrice({ best_price: mockPrice });
+    setOrderForm(prev => ({ ...prev, price: mockPrice.toFixed(2) }));
+  };
 
   const connectWallet = async () => {
     if (!window.ethereum) {
@@ -46,29 +80,46 @@ const IntelliTradePage = () => {
     }
   };
 
-  useEffect(() => {
-    fetchPrice();
-    const interval = setInterval(fetchPrice, 5000);
-    return () => clearInterval(interval);
-  }, [orderForm.side]);
-
-  const fetchPrice = async () => {
-    const mockPrice = orderForm.side === 'buy' ? 1.0002 : 0.9998;
-    setBestPrice({ best_price: mockPrice });
-    setOrderForm(prev => ({ ...prev, price: mockPrice.toString() }));
-  };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const message = "Order OTC " + orderForm.side.toUpperCase() + " senilai " + orderForm.amount + " USDT berhasil!";
-    toast.success(message);
-    setOrderForm({ ...orderForm, amount: '' });
+    if (!account) return toast.error("Hubungkan wallet terlebih dahulu!");
+
+    try {
+      setIsProcessing(true);
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const signer = await provider.getSigner();
+
+      const totalIDR = parseFloat(orderForm.amount) * parseFloat(orderForm.price);
+      
+      // Request Digital Signature as "Approval" for the OTC Order
+      const message = "KONFIRMASI ORDER OTC\n\n" +
+                      "Tipe: " + orderForm.side.toUpperCase() + "\n" +
+                      "Jumlah: " + orderForm.amount + " USDT\n" +
+                      "Rate: Rp " + orderForm.price + "\n" +
+                      "Total: Rp " + totalIDR.toLocaleString('id-ID') + "\n\n" +
+                      "Dengan menandatangani ini, Anda menyetujui transaksi OTC di atas.";
+
+      const signature = await signer.signMessage(message);
+      console.log("Transaction Approved with Signature:", signature);
+
+      toast.success("Transaksi Berhasil Di-approve!");
+      setOrderForm({ ...orderForm, amount: '' });
+    } catch (err: any) {
+      if (err.code === 'ACTION_REJECTED' || err.code === 4001) {
+        toast.error("Transaksi Ditolak oleh User.");
+      } else {
+        toast.error("Gagal memproses transaksi.");
+      }
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
-  const formatCurrency = (val: number, currency: string) => {
-    return new Intl.NumberFormat('en-US', { 
+  const formatIDR = (val: number) => {
+    return new Intl.NumberFormat('id-ID', { 
       style: 'currency', 
-      currency 
+      currency: 'IDR',
+      minimumFractionDigits: 0
     }).format(val);
   };
 
@@ -115,11 +166,11 @@ const IntelliTradePage = () => {
             {bestPrice && (
               <div className="space-y-4">
                 <div className="rounded-2xl bg-blue-500/5 p-12 text-center border border-blue-500/20">
-                  <p className="text-sm font-medium text-gray-500 uppercase tracking-widest">Rate Saat Ini</p>
+                  <p className="text-sm font-medium text-gray-500 uppercase tracking-widest">Rate USDT/IDR (Live)</p>
                   <p className="mt-4 font-mono text-6xl font-bold text-blue-400">
-                    {bestPrice.best_price}
+                    {bestPrice.best_price.toLocaleString('id-ID')}
                   </p>
-                  <p className="mt-4 font-mono text-sm text-gray-600">USD per USDT</p>
+                  <p className="mt-4 font-mono text-sm text-gray-600">Rupiah per USDT</p>
                 </div>
               </div>
             )}
@@ -173,10 +224,9 @@ const IntelliTradePage = () => {
                 </div>
 
                 <div>
-                  <label className="mb-2 block text-sm font-medium text-gray-400">Harga (USD)</label>
+                  <label className="mb-2 block text-sm font-medium text-gray-400">Harga per USDT (IDR)</label>
                   <input
                     type="number"
-                    step="0.0001"
                     value={orderForm.price}
                     onChange={(e) => setOrderForm({ ...orderForm, price: e.target.value })}
                     required
@@ -187,24 +237,24 @@ const IntelliTradePage = () => {
 
               {orderForm.amount && orderForm.price && (
                 <div className="rounded-xl bg-zinc-800/50 p-5 border border-gray-800">
-                  <p className="text-xs text-gray-500 uppercase tracking-wider font-bold">Total Estimasi</p>
+                  <p className="text-xs text-gray-500 uppercase tracking-wider font-bold">Total Estimasi (Rupiah)</p>
                   <p className="mt-1 font-mono text-3xl font-bold text-white">
-                    {formatCurrency(parseFloat(orderForm.amount) * parseFloat(orderForm.price), 'USD')}
+                    {formatIDR(parseFloat(orderForm.amount) * parseFloat(orderForm.price))}
                   </p>
                 </div>
               )}
 
               <button
                 type="submit"
-                disabled={!account}
+                disabled={!account || isProcessing}
                 className={"flex w-full items-center justify-center gap-3 rounded-xl px-4 py-5 font-bold text-white shadow-xl transition-all active:scale-[0.98] " + 
-                  (account 
+                  (account && !isProcessing
                     ? "bg-gradient-to-r from-blue-600 to-cyan-600 shadow-blue-500/20 hover:from-blue-700 hover:to-cyan-700" 
                     : "bg-gray-800 text-gray-500 cursor-not-allowed")
                 }
               >
                 <ShoppingCart className="h-6 w-6" />
-                {account ? "KONFIRMASI TRANSAKSI" : "HUBUNGKAN WALLET UNTUK TRANSAKSI"}
+                {isProcessing ? "MENUNGGU APPROVAL..." : (account ? "KONFIRMASI TRANSAKSI" : "HUBUNGKAN WALLET UNTUK TRANSAKSI")}
               </button>
             </form>
           </div>
