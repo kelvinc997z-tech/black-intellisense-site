@@ -235,11 +235,6 @@ export default function LandingPage() {
                  <button onClick={() => setLang('EN')} className={`px-4 py-1.5 rounded-full text-[9px] font-black transition-all ${lang === 'EN' ? 'bg-white text-black shadow-xl' : 'text-white/40 hover:text-white'}`}>EN</button>
                  <button onClick={() => setLang('ID')} className={`px-4 py-1.5 rounded-full text-[9px] font-black transition-all ${lang === 'ID' ? 'bg-white text-black shadow-xl' : 'text-white/40 hover:text-white'}`}>ID</button>
                </div>
-               {curr.nav.map((item, i) => (
-                <a key={i} href={`#${['challenge','products','philosophy'][i]}`} className="text-[10px] font-black uppercase tracking-[0.4em] text-white/30 hover:text-white transition-all py-2 relative group">
-                  {item}<span className="absolute bottom-0 left-0 w-0 h-0.5 bg-blue-500 group-hover:w-full transition-all duration-500"></span>
-                </a>
-              ))}
               <Web3SignIn />
               <a href="#contact" className="bg-white text-black px-10 py-3 rounded-full hover:bg-blue-600 hover:text-white transition-all duration-500 shadow-2xl font-black italic tracking-widest text-[11px]">CONNECT</a>
             </div>
