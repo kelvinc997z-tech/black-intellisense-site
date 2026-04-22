@@ -216,10 +216,18 @@ export default function LandingPage() {
                  <div className="flex-1 w-full">
                     <div className="bg-black/50 border border-white/5 rounded-[2.5rem] p-4 aspect-video relative group overflow-hidden shadow-2xl">
                        <div className="absolute inset-0 bg-blue-600/10 blur-[100px] group-hover:bg-blue-600/20 transition-all"></div>
-                       <img src="https://images.unsplash.com/photo-1639762681485-074b7f938ba0?auto=format&fit=crop&q=80&w=1200" className="w-full h-full object-cover rounded-[2rem] opacity-50 group-hover:scale-105 transition-transform duration-1000" alt="Data" />
-                       <div className="absolute inset-0 flex items-center justify-center">
-                          <div className="w-20 h-20 rounded-full bg-white flex items-center justify-center text-black shadow-2xl hover:scale-110 transition-transform cursor-pointer">
-                             <Play fill="currentColor" size={24} className="ml-1" />
+                       <video 
+                         autoPlay 
+                         loop 
+                         muted 
+                         playsInline
+                         className="w-full h-full object-cover rounded-[2rem] opacity-50 group-hover:scale-105 transition-transform duration-1000"
+                       >
+                         <source src="https://assets.mixkit.co/videos/preview/mixkit-digital-animation-of-blockchain-technology-network-31742-large.mp4" type="video/mp4" />
+                       </video>
+                       <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                          <div className="w-20 h-20 rounded-full bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center text-white shadow-2xl">
+                             <Activity size={32} className="animate-pulse" />
                           </div>
                        </div>
                     </div>
