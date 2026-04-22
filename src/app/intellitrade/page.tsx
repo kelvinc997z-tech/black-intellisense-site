@@ -12,7 +12,7 @@ declare global {
 }
 
 // Konfigurasi Smart Contract USDT (Contoh di BSC & Polygon)
-const CHAINS = {
+const CHAINS: Record<number, { name: string; usdt: string; explorer: string }> = {
   56: { name: 'BSC', usdt: '0x55d398326f99059fF775485246999027B3197955', explorer: 'https://bscscan.com/tx/' },
   137: { name: 'Polygon', usdt: '0xc2132D05D31c914a87C6611C10748AEb04B58e8F', explorer: 'https://polygonscan.com/tx/' }
 };
