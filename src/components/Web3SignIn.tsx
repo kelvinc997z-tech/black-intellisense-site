@@ -1,7 +1,9 @@
 "use client";
 
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { ethers } from 'ethers';
+import { Wallet, LogOut } from 'lucide-react';
+import { toast } from 'sonner';
 
 declare global {
   interface Window {
@@ -10,99 +12,67 @@ declare global {
 }
 
 /**
- * Hook sederhana untuk menangani koneksi MetaMask & Sign-In (Message Signing)
+ * Komponen Sign-In MetaMask untuk Navbar
  */
-export const useMetaMask = () => {
+export default function Web3SignIn() {
   const [account, setAccount] = useState<string | null>(null);
-  const [isSigning, setIsSigning] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [isConnecting, setIsConnecting] = useState(false);
 
-  const connectAndSign = async () => {
-    setError(null);
-    
-    // 1. Cek apakah MetaMask terinstal
+  const connectAndSignIn = async () => {
     if (!window.ethereum) {
-      setError("MetaMask tidak terdeteksi. Silakan instal extension MetaMask.");
+      toast.error("MetaMask tidak terdeteksi!");
       return;
     }
 
     try {
-      setIsSigning(true);
-
-      // 2. Request akses akun
+      setIsConnecting(true);
       const provider = new ethers.BrowserProvider(window.ethereum);
       const accounts = await provider.send("eth_requestAccounts", []);
       const address = accounts[0];
 
-      // 3. Buat pesan untuk di-sign (mencegah replay attacks)
-      const message = `Selamat datang di Black Intellisense!\n\nKlik Sign untuk masuk.\n\nAddress: ${address}\nTimestamp: ${Date.now()}`;
-      
-      // 4. Minta user melakukan Sign Message
+      // Sign message untuk autentikasi
       const signer = await provider.getSigner();
-      const signature = await signer.signMessage(message);
-
-      console.log("Signature berhasil:", signature);
-      
-      // Di tahap ini, Anda biasanya mengirim `address`, `message`, dan `signature` 
-      // ke backend Anda untuk diverifikasi dan membuat session/JWT.
+      const message = `Sign-in ke Black Intellisense\nTimestamp: ${Date.now()}`;
+      await signer.signMessage(message);
       
       setAccount(address);
-    } catch (err: any) {
-      console.error(err);
-      setError(err.message || "Gagal menghubungkan dompet.");
+      toast.success("Berhasil Masuk!");
+    } catch (error: any) {
+      console.error(error);
+      toast.error(error.message || "Gagal Login");
     } finally {
-      setIsSigning(false);
+      setIsConnecting(false);
     }
   };
 
-  const disconnect = () => {
-    setAccount(null);
-  };
-
-  return { account, isSigning, error, connectAndSign, disconnect };
-};
-
-export default function Web3SignIn() {
-  const { account, isSigning, error, connectAndSign, disconnect } = useMetaMask();
+  if (account) {
+    return (
+      <div className="flex items-center gap-3 bg-white/5 border border-emerald-500/30 rounded-full px-4 py-1.5 backdrop-blur-md">
+        <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+        <span className="text-[10px] font-black text-emerald-400 font-mono">
+          {account.slice(0, 6)}...{account.slice(-4)}
+        </span>
+        <button 
+          onClick={() => setAccount(null)} 
+          className="text-white/20 hover:text-red-500 transition-colors"
+          title="Logout"
+        >
+          <LogOut size={12} />
+        </button>
+      </div>
+    );
+  }
 
   return (
-    <div className="p-6 border border-gray-800 rounded-2xl bg-zinc-900/50 backdrop-blur-md max-w-md">
-      <h2 className="text-xl font-bold mb-4 text-white">Web3 Authentication</h2>
-      
-      {account ? (
-        <div className="space-y-4">
-          <div className="p-3 bg-emerald-500/10 border border-emerald-500/20 rounded-lg">
-            <p className="text-xs text-emerald-400 font-mono break-all">
-              Connected: {account}
-            </p>
-          </div>
-          <button 
-            onClick={disconnect}
-            className="w-full py-2 text-sm font-medium text-gray-400 hover:text-white transition"
-          >
-            Disconnect
-          </button>
-        </div>
-      ) : (
-        <button
-          onClick={connectAndSign}
-          disabled={isSigning}
-          className="w-full py-3 px-4 bg-orange-600 hover:bg-orange-700 disabled:bg-gray-700 text-white font-bold rounded-xl transition shadow-lg shadow-orange-900/20 flex items-center justify-center gap-2"
-        >
-          {isSigning ? (
-            <>
-              <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-              Menunggu Signature...
-            </>
-          ) : (
-            "Connect MetaMask"
-          )}
-        </button>
-      )}
-
-      {error && (
-        <p className="mt-3 text-xs text-red-500 text-center">{error}</p>
-      )}
-    </div>
+    <button
+      onClick={connectAndSignIn}
+      disabled={isConnecting}
+      className="group flex items-center gap-2 px-6 py-2.5 rounded-full border border-white/10 bg-white/5 hover:bg-orange-600 hover:border-orange-500 transition-all duration-500 shadow-xl"
+    >
+      <Wallet className={`h-3 w-3 ${isConnecting ? 'animate-spin' : 'text-orange-500 group-hover:text-white'}`} />
+      <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white">
+        {isConnecting ? "Signing..." : "Web3 Sign In"}
+      </span>
+    </button>
   );
 }

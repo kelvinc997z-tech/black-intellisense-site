@@ -2,6 +2,8 @@
 
 import React, { useState, useEffect } from 'react';
 
+import Web3SignIn from '@/components/Web3SignIn';
+
 export default function LandingPage() {
   const [lang, setLang] = useState<'EN' | 'ID'>('EN');
   const [activeImage, setActiveImage] = useState<string | null>(null);
@@ -218,6 +220,7 @@ export default function LandingPage() {
                   {item}<span className="absolute bottom-0 left-0 w-0 h-0.5 bg-blue-500 group-hover:w-full transition-all duration-500"></span>
                 </a>
               ))}
+              <Web3SignIn />
               <a href="#contact" className="bg-white text-black px-10 py-3 rounded-full hover:bg-blue-600 hover:text-white transition-all duration-500 shadow-2xl font-black italic tracking-widest text-[11px]">CONNECT</a>
             </div>
 
