@@ -32,7 +32,6 @@ const IntelliTradeV6 = () => {
   const [account, setAccount] = useState<string | null>(null);
   const [chainId, setChainId] = useState<number | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
-  const [neuralStatus, setNeuralStatus] = useState("SYNC_OK");
   const [blocks, setBlocks] = useState<string[]>([]);
   const [activeAsset, setActiveAsset] = useState(ASSETS[0]);
   const [history, setHistory] = useState<any[]>([]);
@@ -48,7 +47,6 @@ const IntelliTradeV6 = () => {
     return orderForm.side === 'buy' ? base + 10.5 : base - 10.5;
   }, [orderForm.side, rateIDR, activeAsset]);
 
-  // Proof of Reserve Simulation
   const vaultLiquidity = useMemo(() => (1250450.75 + Math.random() * 1000).toLocaleString(), []);
 
   useEffect(() => {
@@ -129,7 +127,7 @@ const IntelliTradeV6 = () => {
   };
 
   return (
-    <div className="min-h-screen bg-[#010102] text-zinc-300 font-mono overflow-hidden flex flex-col">
+    <div className="min-h-screen bg-[#010102] text-zinc-300 font-sans selection:bg-blue-600/50 overflow-hidden flex flex-col">
       
       {/* V6 Cyber Overlay */}
       <div className="fixed inset-0 pointer-events-none z-0">
@@ -146,7 +144,7 @@ const IntelliTradeV6 = () => {
               <Terminal size={24} className="text-white" />
             </div>
             <div>
-              <h1 className="text-2xl font-black tracking-[0.3em] text-white flex items-baseline gap-2">
+              <h1 className="text-2xl font-black tracking-[0.3em] text-white flex items-baseline gap-2 font-heading">
                 INTELLITRADE <span className="text-blue-500">V.6-PRO</span>
               </h1>
               <p className="text-[7px] text-zinc-600 tracking-[1em] font-bold uppercase mt-1">Institutional Liquidity Nexus</p>
@@ -172,10 +170,8 @@ const IntelliTradeV6 = () => {
         {view === 'terminal' ? (
           <main className="flex-1 grid grid-cols-12 gap-6 overflow-hidden">
             
-            {/* Left Col: Market Analytics */}
             <div className="col-span-12 lg:col-span-8 flex flex-col gap-6 overflow-hidden">
               
-              {/* Massive Data Core */}
               <div className="flex-1 bg-black border border-white/5 p-10 flex flex-col relative group">
                 <div className="flex justify-between items-start mb-12">
                    <div className="space-y-4">
@@ -203,10 +199,10 @@ const IntelliTradeV6 = () => {
 
                 <div className="flex-1 flex items-center">
                   <div className="flex items-baseline gap-6">
-                    <h2 className="text-[14vw] lg:text-[12vw] font-black italic tracking-tighter text-white leading-none">
+                    <h2 className="text-[14vw] lg:text-[12vw] font-black italic tracking-tighter text-white leading-[0.8] font-heading">
                       {currentPrice.toLocaleString('id-ID')}
                     </h2>
-                    <span className="text-4xl font-black text-zinc-800 italic uppercase">IDR</span>
+                    <span className="text-4xl font-black text-zinc-800 italic uppercase font-heading">IDR</span>
                   </div>
                 </div>
 
@@ -225,12 +221,11 @@ const IntelliTradeV6 = () => {
                 </div>
               </div>
 
-              {/* Order Book Visualization */}
               <div className="h-48 grid grid-cols-2 gap-6">
                  <div className="bg-zinc-900/20 border border-white/5 p-6 flex flex-col gap-2 overflow-hidden">
                     <span className="text-[8px] font-black text-red-500/50 tracking-widest mb-2 uppercase">Sell Depth</span>
                     {[...Array(4)].map((_, i) => (
-                      <div key={i} className="flex justify-between text-[9px] font-bold opacity-40">
+                      <div key={i} className="flex justify-between text-[9px] font-bold opacity-40 font-mono">
                          <span className="text-red-400">{(currentPrice + (i+1)*5).toLocaleString()}</span>
                          <span>{Math.floor(Math.random() * 50000)} USDT</span>
                       </div>
@@ -239,7 +234,7 @@ const IntelliTradeV6 = () => {
                  <div className="bg-zinc-900/20 border border-white/5 p-6 flex flex-col gap-2 overflow-hidden">
                     <span className="text-[8px] font-black text-emerald-500/50 tracking-widest mb-2 uppercase">Buy Depth</span>
                     {[...Array(4)].map((_, i) => (
-                      <div key={i} className="flex justify-between text-[9px] font-bold opacity-40">
+                      <div key={i} className="flex justify-between text-[9px] font-bold opacity-40 font-mono">
                          <span className="text-emerald-400">{(currentPrice - (i+1)*5).toLocaleString()}</span>
                          <span>{Math.floor(Math.random() * 50000)} USDT</span>
                       </div>
@@ -248,13 +243,12 @@ const IntelliTradeV6 = () => {
               </div>
             </div>
 
-            {/* Right Col: Execution Terminal */}
             <div className="col-span-12 lg:col-span-4 flex flex-col gap-6">
                <div className="flex-1 bg-[#050505] border border-white/10 p-8 flex flex-col relative overflow-hidden shadow-2xl">
                   <div className="absolute top-0 right-0 w-32 h-32 bg-blue-600/5 blur-3xl"></div>
                   
                   <div className="mb-10">
-                     <h3 className="text-sm font-black tracking-[0.4em] text-white flex items-center gap-3 uppercase">
+                     <h3 className="text-sm font-black tracking-[0.4em] text-white flex items-center gap-3 uppercase font-heading">
                         <Cpu size={16} className="text-blue-500" /> Execution Core
                      </h3>
                   </div>
@@ -268,26 +262,26 @@ const IntelliTradeV6 = () => {
                     <div className="space-y-6 flex-1">
                        <div className="space-y-2">
                           <label className="text-[8px] text-zinc-600 tracking-widest uppercase ml-2">Qty ({activeAsset.id})</label>
-                          <input type="number" value={orderForm.amount} onChange={(e) => setOrderForm({...orderForm, amount: e.target.value})} placeholder="0.00" className="w-full bg-black border border-white/10 p-5 text-2xl font-black text-white outline-none focus:border-blue-600 transition-all" />
+                          <input type="number" value={orderForm.amount} onChange={(e) => setOrderForm({...orderForm, amount: e.target.value})} placeholder="0.00" className="w-full bg-black border border-white/10 p-5 text-2xl font-black text-white outline-none focus:border-blue-600 transition-all font-mono" />
                        </div>
 
                        {orderForm.amount && (
                          <div className="bg-blue-600/5 border border-blue-500/20 p-6 space-y-4 animate-in slide-in-from-right-4">
                             <div className="flex justify-between text-[8px] tracking-widest uppercase text-zinc-500">
                                <span>Rate_Locked</span>
-                               <span>Rp {currentPrice.toLocaleString('id-ID')}</span>
+                               <span className="font-mono">Rp {currentPrice.toLocaleString('id-ID')}</span>
                             </div>
                             <div className="h-px bg-white/5"></div>
                             <div className="flex flex-col">
                                <span className="text-[9px] font-black text-blue-400 tracking-[0.3em] uppercase mb-1">Settlement_Value</span>
-                               <span className="text-3xl font-black text-white italic tracking-tighter">Rp {(parseFloat(orderForm.amount) * currentPrice).toLocaleString('id-ID')}</span>
+                               <span className="text-3xl font-black text-white italic tracking-tighter font-heading">Rp {(parseFloat(orderForm.amount) * currentPrice).toLocaleString('id-ID')}</span>
                             </div>
                          </div>
                        )}
                     </div>
 
                     <button disabled={!account || !orderForm.amount || isProcessing} className={`w-full py-8 text-xs font-black tracking-[0.8em] uppercase transition-all flex items-center justify-center gap-4 ${account && orderForm.amount && !isProcessing ? 'bg-white text-black hover:bg-blue-600 hover:text-white' : 'bg-zinc-900 text-zinc-700 cursor-not-allowed'}`}>
-                       {isProcessing ? <RefreshCw className="animate-spin" /> : <><Zap size={16}/> Execute_V6_Handshake</>}
+                       {isProcessing ? <RefreshCw className="animate-spin" /> : <><Zap size={16}/> Execute_Handshake</>}
                     </button>
                   </form>
                </div>
@@ -297,7 +291,7 @@ const IntelliTradeV6 = () => {
           <main className="flex-1 bg-black border border-white/5 p-12 overflow-y-auto">
              <div className="flex justify-between items-end mb-10 pb-6 border-b border-white/5">
                 <div className="space-y-2">
-                   <h2 className="text-2xl font-black italic tracking-widest uppercase text-white">Trade History & Reports</h2>
+                   <h2 className="text-2xl font-black italic tracking-widest uppercase text-white font-heading">Trade History & Reports</h2>
                    <p className="text-[9px] text-zinc-600 tracking-widest font-bold uppercase italic">Institutional Audit Logs • Real-time Data</p>
                 </div>
                 <button className="flex items-center gap-2 px-6 py-3 border border-white/10 text-[9px] font-black uppercase tracking-widest hover:bg-white hover:text-black transition-all">
@@ -310,7 +304,7 @@ const IntelliTradeV6 = () => {
                   <div key={i} className="grid grid-cols-6 p-6 border border-white/5 bg-zinc-900/20 hover:bg-zinc-900/40 transition-all items-center">
                      <div className="flex flex-col">
                         <span className="text-[7px] text-zinc-600 uppercase mb-1">Ticket_ID</span>
-                        <span className="text-xs font-bold text-blue-500">{trade.id}</span>
+                        <span className="text-xs font-bold text-blue-500 font-mono">{trade.id}</span>
                      </div>
                      <div className="flex flex-col">
                         <span className="text-[7px] text-zinc-600 uppercase mb-1">Timestamp</span>
@@ -326,11 +320,11 @@ const IntelliTradeV6 = () => {
                      </div>
                      <div className="flex flex-col text-right">
                         <span className="text-[7px] text-zinc-600 uppercase mb-1">Qty</span>
-                        <span className="text-xs font-bold text-zinc-300">{trade.amount}</span>
+                        <span className="text-xs font-bold text-zinc-300 font-mono">{trade.amount}</span>
                      </div>
                      <div className="flex flex-col text-right">
                         <span className="text-[7px] text-zinc-600 uppercase mb-1">Total IDR</span>
-                        <span className="text-sm font-black text-white italic tracking-tighter">Rp {trade.total}</span>
+                        <span className="text-sm font-black text-white italic tracking-tighter font-heading">Rp {trade.total}</span>
                      </div>
                   </div>
                 )) : (
@@ -343,7 +337,6 @@ const IntelliTradeV6 = () => {
           </main>
         )}
 
-        {/* Dynamic Data Ribbon */}
         <footer className="h-10 border-t border-white/5 flex items-center justify-between text-[7px] font-bold text-zinc-800 uppercase tracking-[0.5em]">
            <div className="flex gap-10">
               <span className="text-blue-900">BlackIntellisense_Protocol: v6.0.4-PRO</span>
@@ -357,11 +350,21 @@ const IntelliTradeV6 = () => {
       </div>
 
       <style jsx global>{`
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&family=Space+Grotesk:wght@300;700;900&family=JetBrains+Mono:wght@400;800&display=swap');
+        
+        :root {
+          --font-sans: 'Inter', sans-serif;
+          --font-heading: 'Space Grotesk', sans-serif;
+          --font-mono: 'JetBrains Mono', monospace;
+        }
+
+        body { font-family: var(--font-sans); }
+        .font-heading { font-family: var(--font-heading); }
+        .font-mono { font-family: var(--font-mono); }
+
         ::-webkit-scrollbar { width: 3px; }
         ::-webkit-scrollbar-track { background: transparent; }
         ::-webkit-scrollbar-thumb { background: #222; }
-        @keyframes subtle-pulse { 0%, 100% { opacity: 0.1; } 50% { opacity: 0.2; } }
-        .cyber-grid { animation: subtle-pulse 10s ease-in-out infinite; }
       `}</style>
     </div>
   );
