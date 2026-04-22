@@ -1,17 +1,44 @@
 "use client";
 
 import React, { useEffect, useState } from 'react';
-import { ShoppingCart } from 'lucide-react';
+import { ShoppingCart, Wallet } from 'lucide-react';
 import { toast } from 'sonner';
+import { ethers } from 'ethers';
 
 const IntelliTradePage = () => {
   const [bestPrice, setBestPrice] = useState<any>(null);
+  const [account, setAccount] = useState<string | null>(null);
+  const [isConnecting, setIsConnecting] = useState(false);
   const [orderForm, setOrderForm] = useState({
     symbol: 'USDT',
     side: 'buy' as 'buy' | 'sell',
     amount: '',
     price: ''
   });
+
+  const connectWallet = async () => {
+    if (!window.ethereum) {
+      toast.error("MetaMask tidak terdeteksi!");
+      return;
+    }
+    try {
+      setIsConnecting(true);
+      const provider = new ethers.BrowserProvider(window.ethereum);
+      const accounts = await provider.send("eth_requestAccounts", []);
+      const address = accounts[0];
+      
+      const message = "Sign-in to IntelliTrade OTC\nTimestamp: " + Date.now();
+      const signer = await provider.getSigner();
+      await signer.signMessage(message);
+      
+      setAccount(address);
+      toast.success("Wallet berhasil terhubung!");
+    } catch (err: any) {
+      toast.error(err.message || "Gagal menghubungkan wallet");
+    } finally {
+      setIsConnecting(false);
+    }
+  };
 
   useEffect(() => {
     fetchPrice();
@@ -42,11 +69,30 @@ const IntelliTradePage = () => {
   return (
     <div className="min-h-screen bg-black text-white p-6 space-y-6">
       <div className="max-w-7xl mx-auto">
-        <header className="mb-10">
-          <h1 className="text-4xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-emerald-400 to-cyan-400">
-            IntelliTrade OTC Platform
-          </h1>
-          <p className="mt-2 text-base text-gray-500">Trading OTC profesional dengan harga live</p>
+        <header className="mb-10 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+          <div>
+            <h1 className="text-4xl font-bold tracking-tight bg-clip-text text-transparent bg-gradient-to-r from-emerald-400 to-cyan-400">
+              IntelliTrade OTC Platform
+            </h1>
+            <p className="mt-2 text-base text-gray-500">Trading OTC profesional dengan harga live</p>
+          </div>
+          
+          <div>
+            {account ? (
+              <div className="px-4 py-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-400 font-mono text-sm">
+                {account.slice(0, 6)}...{account.slice(-4)}
+              </div>
+            ) : (
+              <button
+                onClick={connectWallet}
+                disabled={isConnecting}
+                className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-orange-600 hover:bg-orange-700 text-white font-bold transition-all shadow-lg shadow-orange-900/20"
+              >
+                <Wallet className="h-4 w-4" />
+                {isConnecting ? "Connecting..." : "Connect Wallet"}
+              </button>
+            )}
+          </div>
         </header>
 
         <div className="grid gap-8 lg:grid-cols-2">
@@ -144,10 +190,15 @@ const IntelliTradePage = () => {
 
               <button
                 type="submit"
-                className="flex w-full items-center justify-center gap-3 rounded-xl bg-gradient-to-r from-blue-600 to-cyan-600 px-4 py-5 font-bold text-white shadow-xl shadow-blue-500/20 hover:from-blue-700 hover:to-cyan-700 transition-all active:scale-[0.98]"
+                disabled={!account}
+                className={"flex w-full items-center justify-center gap-3 rounded-xl px-4 py-5 font-bold text-white shadow-xl transition-all active:scale-[0.98] " + 
+                  (account 
+                    ? "bg-gradient-to-r from-blue-600 to-cyan-600 shadow-blue-500/20 hover:from-blue-700 hover:to-cyan-700" 
+                    : "bg-gray-800 text-gray-500 cursor-not-allowed")
+                }
               >
                 <ShoppingCart className="h-6 w-6" />
-                KONFIRMASI TRANSAKSI
+                {account ? "KONFIRMASI TRANSAKSI" : "HUBUNGKAN WALLET UNTUK TRANSAKSI"}
               </button>
             </form>
           </div>
