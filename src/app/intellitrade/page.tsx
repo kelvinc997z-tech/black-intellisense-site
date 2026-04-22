@@ -95,7 +95,7 @@ const IntelliTradePage = () => {
       
       toast.promise(tx.wait(), {
         loading: 'Memproses transaksi di blockchain...',
-        success: (receipt) => {
+        success: (receipt: any) => {
           setOrderForm({ ...orderForm, amount: '' });
           return `Transaksi Berhasil! Hash: ${receipt.hash.slice(0,10)}...`;
         },
