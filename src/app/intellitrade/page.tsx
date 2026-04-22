@@ -8,7 +8,7 @@ const IntelliTradePage = () => {
   const [bestPrice, setBestPrice] = useState<any>(null);
   const [orderForm, setOrderForm] = useState({
     symbol: 'USDT',
-    side: 'buy',
+    side: 'buy' as 'buy' | 'sell',
     amount: '',
     price: ''
   });
@@ -27,7 +27,8 @@ const IntelliTradePage = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    toast.success(\`Order OTC \${orderForm.side.toUpperCase()} senilai \${orderForm.amount} USDT berhasil!\`);
+    const message = "Order OTC " + orderForm.side.toUpperCase() + " senilai " + orderForm.amount + " USDT berhasil!";
+    toast.success(message);
     setOrderForm({ ...orderForm, amount: '' });
   };
 
@@ -82,22 +83,24 @@ const IntelliTradePage = () => {
                   <button
                     type="button"
                     onClick={() => setOrderForm({ ...orderForm, side: 'buy' })}
-                    className={\`rounded-xl py-3 font-bold transition-all \${
-                      orderForm.side === 'buy'
+                    className={
+                      "rounded-xl py-3 font-bold transition-all " +
+                      (orderForm.side === 'buy'
                         ? 'bg-emerald-600 text-white shadow-lg shadow-emerald-500/20'
-                        : 'border border-gray-800 text-gray-500 hover:bg-zinc-800'
-                    }\`}
+                        : 'border border-gray-800 text-gray-500 hover:bg-zinc-800')
+                    }
                   >
                     BELI
                   </button>
                   <button
                     type="button"
                     onClick={() => setOrderForm({ ...orderForm, side: 'sell' })}
-                    className={\`rounded-xl py-3 font-bold transition-all \${
-                      orderForm.side === 'sell'
+                    className={
+                      "rounded-xl py-3 font-bold transition-all " +
+                      (orderForm.side === 'sell'
                         ? 'bg-red-600 text-white shadow-lg shadow-red-500/20'
-                        : 'border border-gray-800 text-gray-500 hover:bg-zinc-800'
-                    }\`}
+                        : 'border border-gray-800 text-gray-500 hover:bg-zinc-800')
+                    }
                   >
                     JUAL
                   </button>
