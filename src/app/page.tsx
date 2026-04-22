@@ -5,7 +5,7 @@ import Web3SignIn from '@/components/Web3SignIn';
 import { 
   Zap, ArrowRight, ShieldCheck, Globe, Cpu, 
   ChevronRight, Play, ExternalLink, BarChart3, 
-  Lock, Terminal as TerminalIcon, Smartphone, Mail
+  Lock, Terminal as TerminalIcon, Smartphone, Mail, Activity
 } from 'lucide-react';
 
 export default function LandingPage() {
