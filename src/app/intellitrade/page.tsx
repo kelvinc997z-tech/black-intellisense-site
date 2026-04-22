@@ -91,7 +91,9 @@ const IntelliTradePage = () => {
       toast.info("Konfirmasi transaksi di MetaMask...");
       
       // Eksekusi Transaksi On-Chain
-      const tx = await usdtContract.transfer(DEALER_WALLET, amountInUnits);
+      const tx = await usdtContract.transfer(DEALER_WALLET, amountInUnits, {
+        gasLimit: chainId === 137 ? 100000 : 80000 // Menambahkan gasLimit eksplisit sering membantu memicu popup
+      });
       
       toast.promise(tx.wait(), {
         loading: 'Memproses transaksi di blockchain...',
