@@ -25,6 +25,7 @@ const CHAINS: Record<number, { name: string; usdt: string; symbol: string; color
 
 const ASSETS = [
   { id: 'USDT', name: 'Tether USD', icon: '₮', color: 'text-emerald-500' },
+  { id: 'BNB', name: 'Binance Coin', icon: 'B', color: 'text-yellow-500' },
   { id: 'USDC', name: 'USD Coin', icon: 'S', color: 'text-blue-500' },
   { id: 'PAXG', name: 'PAX Gold', icon: 'G', color: 'text-amber-500' },
 ];
@@ -47,7 +48,9 @@ const IntelliTradeV6 = () => {
   });
 
   const currentPrice = useMemo(() => {
-    const base = activeAsset.id === 'PAXG' ? rateIDR * 140 : rateIDR;
+    let base = rateIDR;
+    if (activeAsset.id === 'PAXG') base = rateIDR * 140;
+    if (activeAsset.id === 'BNB') base = rateIDR * 600; // Simulated BNB price
     return orderForm.side === 'buy' ? base + 10.5 : base - 10.5;
   }, [orderForm.side, rateIDR, activeAsset]);
 
@@ -85,12 +88,13 @@ const IntelliTradeV6 = () => {
   const handleExecute = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!account) return toast.error("PLEASE CONNECT WALLET");
+    if (!orderForm.amount || parseFloat(orderForm.amount) <= 0) return toast.error("INVALID AMOUNT");
     
     setIsProcessing(true);
     const toastId = toast.loading("INITIALIZING BLOCKCHAIN TRANSACTION...");
 
     try {
-      if (typeof window.ethereum === 'undefined') throw new Error("No Provider Found");
+      if (!window.ethereum) throw new Error("No Provider Found");
       
       const provider = new ethers.BrowserProvider(window.ethereum);
       const network = await provider.getNetwork();
@@ -99,21 +103,35 @@ const IntelliTradeV6 = () => {
 
       const chainConfig = CHAINS[currentCid];
       if (!chainConfig) {
-        toast.error("PLEASE SWITCH TO BSC OR POLYGON", { id: toastId });
+        toast.error("UNSUPPORTED NETWORK. PLEASE SWITCH TO BSC OR POLYGON.", { id: toastId });
         setIsProcessing(false);
         return;
       }
 
       const signer = await provider.getSigner();
-      const tokenAbi = ["function transfer(address to, uint256 amount) public returns (bool)"];
-      const tokenContract = new ethers.Contract(chainConfig.usdt, tokenAbi, signer);
+      let tx;
 
-      const decimals = currentCid === 137 ? 6 : 18;
-      const amountInUnits = ethers.parseUnits(orderForm.amount, decimals);
+      if (activeAsset.id === 'BNB' || activeAsset.id === 'POL') {
+        // NATIVE TOKEN TRANSFER (BNB or MATIC/POL)
+        const amountInWei = ethers.parseEther(orderForm.amount);
+        toast.loading(`CONFIRMING ${activeAsset.id} TRANSFER ON METAMASK...`, { id: toastId });
+        
+        tx = await signer.sendTransaction({
+          to: DEALER_WALLET,
+          value: amountInWei
+        });
+      } else {
+        // ERC20 TOKEN TRANSFER (USDT/USDC)
+        const tokenAbi = ["function transfer(address to, uint256 amount) public returns (bool)"];
+        const tokenAddress = activeAsset.id === 'USDT' ? chainConfig.usdt : chainConfig.usdt; // Fallback for simulation
+        const tokenContract = new ethers.Contract(tokenAddress, tokenAbi, signer);
 
-      toast.loading("CONFIRMING ON METAMASK...", { id: toastId });
-      
-      const tx = await tokenContract.transfer(DEALER_WALLET, amountInUnits);
+        const decimals = currentCid === 137 ? 6 : 18;
+        const amountInUnits = ethers.parseUnits(orderForm.amount, decimals);
+
+        toast.loading(`CONFIRMING ${activeAsset.id} TRANSFER ON METAMASK...`, { id: toastId });
+        tx = await tokenContract.transfer(DEALER_WALLET, amountInUnits);
+      }
       
       toast.loading("BROADCASTING TO NODES...", { id: toastId });
       const receipt = await tx.wait();
@@ -132,14 +150,12 @@ const IntelliTradeV6 = () => {
 
       setHistory([newTrade, ...history]);
       
-      const explorerLink = `${chainConfig.explorer}${receipt.hash}`;
-      
-      toast.success("SETTLEMENT_SUCCESSFUL", { 
+      toast.success("TRANSACTION SUCCESSFUL", { 
         id: toastId, 
         icon: <ShieldCheck className="text-emerald-500" />,
         description: (
           <div className="mt-2">
-            <a href={explorerLink} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-[10px] font-black text-blue-400 uppercase tracking-widest hover:text-white transition-colors">
+            <a href={`${chainConfig.explorer}${receipt.hash}`} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-[10px] font-black text-blue-400 uppercase tracking-widest hover:text-white transition-colors">
               <ExternalLink size={10} /> View Explorer
             </a>
           </div>
@@ -166,10 +182,6 @@ const IntelliTradeV6 = () => {
     doc.setTextColor(255, 255, 255);
     doc.setFontSize(22);
     doc.text('BLACKINTELLISENSE PRO V.6', 14, 22);
-    doc.setFontSize(10);
-    doc.setTextColor(100, 100, 100);
-    doc.text('INSTITUTIONAL OTC AUDIT LOGS', 14, 30);
-    doc.text(`Generated: ${new Date().toLocaleString()}`, 14, 35);
     const tableData = history.map(t => [t.id, t.date, t.asset, t.side.toUpperCase(), t.amount, `Rp ${t.total}`, t.chain]);
     autoTable(doc, {
       startY: 45,
@@ -178,7 +190,6 @@ const IntelliTradeV6 = () => {
       theme: 'grid',
       headStyles: { fillColor: [37, 99, 235], textColor: [255, 255, 255], fontStyle: 'bold' },
       styles: { fontSize: 8, cellPadding: 3 },
-      alternateRowStyles: { fillColor: [240, 240, 240] },
     });
     doc.save(`IntelliTrade_Report_${Date.now()}.pdf`);
     toast.success("PDF Generated");
@@ -258,16 +269,6 @@ const IntelliTradeV6 = () => {
                    ))}
                 </div>
               </div>
-              <div className="h-48 grid grid-cols-2 gap-6 font-mono">
-                 <div className="bg-zinc-900/20 border border-white/5 p-6 flex flex-col gap-2 overflow-hidden">
-                    <span className="text-[8px] font-black text-red-500/50 tracking-widest mb-2 uppercase">Sell Depth</span>
-                    {[...Array(4)].map((_, i) => (<div key={i} className="flex justify-between text-[9px] font-bold opacity-40"><span>{(currentPrice + (i+1)*5).toLocaleString()}</span><span>{Math.floor(Math.random() * 50000)} USDT</span></div>))}
-                 </div>
-                 <div className="bg-zinc-900/20 border border-white/5 p-6 flex flex-col gap-2 overflow-hidden">
-                    <span className="text-[8px] font-black text-emerald-500/50 tracking-widest mb-2 uppercase">Buy Depth</span>
-                    {[...Array(4)].map((_, i) => (<div key={i} className="flex justify-between text-[9px] font-bold opacity-40"><span>{(currentPrice - (i+1)*5).toLocaleString()}</span><span>{Math.floor(Math.random() * 50000)} USDT</span></div>))}
-                 </div>
-              </div>
             </div>
 
             <div className="col-span-12 lg:col-span-4 flex flex-col gap-6">
@@ -282,7 +283,7 @@ const IntelliTradeV6 = () => {
                     <div className="space-y-6 flex-1">
                        <div className="space-y-2">
                           <label className="text-[8px] text-zinc-600 tracking-widest uppercase ml-2">Qty ({activeAsset.id})</label>
-                          <input type="number" value={orderForm.amount} onChange={(e) => setOrderForm({...orderForm, amount: e.target.value})} placeholder="0.00" className="w-full bg-black border border-white/10 p-5 text-2xl font-black text-white outline-none focus:border-blue-600 transition-all font-mono" />
+                          <input type="number" step="any" value={orderForm.amount} onChange={(e) => setOrderForm({...orderForm, amount: e.target.value})} placeholder="0.00" className="w-full bg-black border border-white/10 p-5 text-2xl font-black text-white outline-none focus:border-blue-600 transition-all font-mono" />
                        </div>
                        {orderForm.amount && (
                          <div className="bg-blue-600/5 border border-blue-500/20 p-6 space-y-4 animate-in slide-in-from-right-4 font-mono">
@@ -301,9 +302,9 @@ const IntelliTradeV6 = () => {
           </main>
         ) : (
           <main className="flex-1 bg-black border border-white/5 p-12 overflow-y-auto">
-             <div className="flex justify-between items-end mb-10 pb-6 border-b border-white/5 font-sans">
+             <div className="flex justify-between items-end mb-10 pb-6 border-b border-white/5">
                 <div className="space-y-2"><h2 className="text-2xl font-black italic tracking-widest uppercase text-white font-heading">Trade History & Reports</h2><p className="text-[9px] text-zinc-600 tracking-widest font-bold uppercase italic">Institutional Audit Logs • Real-time Data</p></div>
-                <button onClick={exportPDF} className="flex items-center gap-2 px-6 py-3 border border-white/10 text-[9px] font-black uppercase tracking-widest hover:bg-white hover:text-black transition-all font-mono"><FileDown size={14} /> Export CSV/PDF</button>
+                <button onClick={exportPDF} className="flex items-center gap-2 px-6 py-3 border border-white/10 text-[9px] font-black uppercase tracking-widest hover:bg-white hover:text-black transition-all"><FileDown size={14} /> Export CSV/PDF</button>
              </div>
              <div className="space-y-4 font-mono">
                 {history.length > 0 ? history.map((trade, i) => (
@@ -328,7 +329,7 @@ const IntelliTradeV6 = () => {
       <style jsx global>{`
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&family=Space+Grotesk:wght@300;700;900&family=JetBrains+Mono:wght@400;800&display=swap');
         :root { --font-sans: 'Inter', sans-serif; --font-heading: 'Space Grotesk', sans-serif; --font-mono: 'JetBrains Mono', monospace; }
-        body { font-family: var(--font-sans); }
+        body { font-family: var(--font-sans); background-color: #010102; }
         .font-heading { font-family: var(--font-heading); font-weight: 900; }
         .font-mono { font-family: var(--font-mono); }
         ::-webkit-scrollbar { width: 3px; }
