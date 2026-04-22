@@ -1,7 +1,6 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-
 import Web3SignIn from '@/components/Web3SignIn';
 
 export default function LandingPage() {
@@ -220,8 +219,13 @@ export default function LandingPage() {
             </div>
 
             <div className="hidden lg:flex items-center space-x-12">
-              <div className="flex items-center space-x-8">
-                {curr.nav.map((item: any, i: number) => (
+               <div className="flex bg-white/5 rounded-full p-1 border border-white/10">
+                 <button onClick={() => setLang('EN')} className={`px-4 py-1.5 rounded-full text-[9px] font-black transition-all ${lang === 'EN' ? 'bg-white text-black shadow-xl' : 'text-white/40 hover:text-white'}`}>EN</button>
+                 <button onClick={() => setLang('ID')} className={`px-4 py-1.5 rounded-full text-[9px] font-black transition-all ${lang === 'ID' ? 'bg-white text-black shadow-xl' : 'text-white/40 hover:text-white'}`}>ID</button>
+               </div>
+               
+               <div className="flex items-center space-x-8">
+                {curr.nav.map((item, i) => (
                   <a 
                     key={i} 
                     href={item.href} 
@@ -230,138 +234,121 @@ export default function LandingPage() {
                     {item.name}
                   </a>
                 ))}
-              </div>
-               <div className="flex bg-white/5 rounded-full p-1 border border-white/10">
-                 <button onClick={() => setLang('EN')} className={`px-4 py-1.5 rounded-full text-[9px] font-black transition-all ${lang === 'EN' ? 'bg-white text-black shadow-xl' : 'text-white/40 hover:text-white'}`}>EN</button>
-                 <button onClick={() => setLang('ID')} className={`px-4 py-1.5 rounded-full text-[9px] font-black transition-all ${lang === 'ID' ? 'bg-white text-black shadow-xl' : 'text-white/40 hover:text-white'}`}>ID</button>
                </div>
+
               <Web3SignIn />
               <a href="#contact" className="bg-white text-black px-10 py-3 rounded-full hover:bg-blue-600 hover:text-white transition-all duration-500 shadow-2xl font-black italic tracking-widest text-[11px]">CONNECT</a>
             </div>
 
-            <button className="lg:hidden text-white p-2" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
-              <div className="w-8 h-5 flex flex-col justify-between">
-                <span className={`h-1 w-full bg-white transition-all ${mobileMenuOpen ? 'rotate-45 translate-y-2' : ''}`}></span>
-                <span className={`h-1 w-full bg-white transition-all ${mobileMenuOpen ? 'opacity-0' : ''}`}></span>
-                <span className={`h-1 w-full bg-white transition-all ${mobileMenuOpen ? '-rotate-45 -translate-y-2' : ''}`}></span>
-              </div>
+            <button className="lg:hidden text-white/50" onClick={() => setMobileMenuOpen(!mobileMenuOpen)}>
+              <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d={mobileMenuOpen ? "M6 18L18 6M6 6l12 12" : "M4 6h16M4 12h16M4 18h16"}></path></svg>
             </button>
           </div>
         </div>
       </nav>
 
       {/* Hero Section */}
-      <section className="relative min-h-screen flex items-center justify-center pt-32 pb-20 z-10 text-center">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="inline-flex items-center gap-4 px-6 py-3 rounded-full bg-white/5 border border-white/10 text-blue-400 text-[10px] font-black tracking-[0.4em] uppercase mb-12 shadow-inner backdrop-blur-xl animate-in fade-in slide-in-from-top-12 duration-1000">
-            <span className="flex h-2.5 w-2.5 relative"><span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-blue-400 opacity-75"></span><span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-blue-500"></span></span>
-            {curr.hero.badge}
-          </div>
-          <h1 className="text-6xl md:text-8xl font-black tracking-tighter text-white mb-10 leading-[0.9] uppercase italic mix-blend-difference">
-            <span className="block animate-in fade-in slide-in-from-bottom-20 duration-1000 delay-100 fill-mode-both">{curr.hero.title1}</span>
-            <span className="text-transparent bg-clip-text bg-gradient-to-br from-white via-blue-500 to-blue-900 animate-in fade-in slide-in-from-bottom-20 duration-1000 delay-400 fill-mode-both drop-shadow-[0_20px_50px_rgba(59,130,246,0.2)]">{curr.hero.title2}</span>
+      <header className="relative pt-64 pb-32 px-6 z-10 text-center">
+        <div className="max-w-7xl mx-auto">
+          <div className="inline-block px-6 py-2 bg-blue-600/10 border border-blue-500/20 rounded-full text-[10px] font-black uppercase tracking-[0.5em] text-blue-400 mb-12 animate-fade-in">{curr.hero.badge}</div>
+          <h1 className="text-[12vw] md:text-[9vw] font-black uppercase italic leading-[0.85] tracking-tighter mb-12 animate-fade-in [animation-delay:200ms]">
+            {curr.hero.title1}<br /><span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-600 via-blue-400 to-indigo-500">{curr.hero.title2}</span>
           </h1>
-          <p className="max-w-3xl mx-auto text-lg md:text-xl text-white/40 mb-16 font-medium leading-relaxed tracking-tight px-4 animate-in fade-in duration-1000 delay-600 fill-mode-both">
-            {curr.hero.desc}
-          </p>
-          <div className="flex flex-col sm:flex-row justify-center gap-8 animate-in fade-in slide-in-from-bottom-12 duration-1000 delay-800 fill-mode-both">
-            <a href="#products" className="group relative px-14 py-6 bg-white text-black rounded-full font-black text-xl overflow-hidden transition-all duration-500 hover:scale-105 hover:shadow-[0_0_60px_rgba(255,255,255,0.2)]">
-              <span className="relative z-10 italic uppercase">{curr.hero.btn1}</span>
-              <div className="absolute inset-0 bg-blue-600 translate-y-full group-hover:translate-y-0 transition-transform duration-500"></div>
-            </a>
-            <a href="#contact" className="group px-14 py-6 bg-transparent border-2 border-white/10 rounded-full font-black text-xl hover:bg-white/5 hover:border-blue-500 transition-all duration-700 flex items-center justify-center gap-4 uppercase">
-              {curr.hero.btn2}
-            </a>
+          <p className="max-w-2xl mx-auto text-lg md:text-xl text-white/40 font-bold leading-relaxed uppercase tracking-wider mb-20 animate-fade-in [animation-delay:400ms]">{curr.hero.desc}</p>
+          <div className="flex flex-col md:flex-row items-center justify-center gap-6 animate-fade-in [animation-delay:600ms]">
+            <a href="#suite" className="w-full md:w-auto bg-blue-600 text-white px-16 py-8 rounded-full font-black text-xl tracking-tighter hover:bg-blue-700 transition-all shadow-[0_0_50px_rgba(37,99,235,0.3)] uppercase italic">{curr.hero.btn1}</a>
+            <a href="#contact" className="w-full md:w-auto border-2 border-white/10 hover:border-white/20 text-white px-16 py-8 rounded-full font-black text-xl tracking-tighter transition-all uppercase italic">{curr.hero.btn2}</a>
           </div>
         </div>
-      </section>
+      </header>
 
-      {/* Chapter 01: The Challenge */}
-      <section id="challenge" className="relative py-48 z-10">
-        <div className="max-w-7xl mx-auto px-6">
-          <div className="grid lg:grid-cols-2 gap-24 items-center">
+      {/* Problem Section */}
+      <section id="problem" className="relative py-48 z-10 px-6">
+        <div className="max-w-7xl mx-auto">
+          <div className="grid lg:grid-cols-2 gap-32 items-center">
             <div>
-              <h2 className="text-blue-500 font-black text-[11px] tracking-[0.6em] uppercase mb-8 italic">{curr.challenge.ch}</h2>
-              <h3 className="text-5xl md:text-7xl font-black text-white mb-12 tracking-tighter leading-none uppercase italic">{curr.challenge.title}</h3>
-              <p className="text-xl md:text-2xl text-white/40 mb-16 font-bold leading-relaxed italic border-l-4 border-blue-600 pl-8">
-                {curr.challenge.quote}
-              </p>
-              <div className="space-y-12">
-                {curr.challenge.items.map((item, i) => (
-                  <div key={i} className="flex gap-8 group">
-                    <div className="w-16 h-16 bg-white/5 rounded-3xl flex items-center justify-center border border-white/10 transition-all duration-500 group-hover:bg-blue-600 group-hover:scale-110 shadow-2xl shrink-0">
-                       <span className="text-blue-500 group-hover:text-white font-black text-2xl italic">!</span>
-                    </div>
-                    <div className="flex-1">
-                      <h5 className="text-white font-black uppercase text-xl tracking-tighter mb-2 italic">{item.t}</h5>
-                      <p className="text-white/30 text-sm md:text-base font-medium leading-relaxed uppercase tracking-wider">{item.d}</p>
-                    </div>
-                  </div>
-                ))}
+              <div className="text-blue-500 font-black text-xs uppercase tracking-[0.8em] mb-12">{curr.challenge.ch}</div>
+              <h2 className="text-7xl md:text-9xl font-black uppercase italic leading-[0.8] tracking-tighter mb-16">{curr.challenge.title}</h2>
+              <div className="border-l-8 border-blue-600 pl-12 py-4 mb-16">
+                <p className="text-2xl md:text-4xl font-black italic tracking-tight text-white/80 leading-tight">{curr.challenge.quote}</p>
               </div>
             </div>
-            <div className="relative aspect-square">
-               <div className="relative h-full w-full border border-white/5 rounded-[4rem] p-16 bg-white/5 backdrop-blur-3xl flex flex-col justify-center items-center text-center overflow-hidden">
-                  <div className="text-blue-500 font-black text-[10rem] md:text-[14rem] italic tracking-tighter leading-none mb-4 drop-shadow-[0_0_60px_rgba(59,130,246,0.3)]">84%</div>
-                  <h6 className="text-white font-black uppercase tracking-[0.4em] text-xs">{curr.challenge.risk}</h6>
-                  <p className="mt-12 text-white/30 text-xs md:text-sm font-black uppercase tracking-[0.2em]">{curr.challenge.riskDesc}</p>
-               </div>
+            <div className="space-y-12">
+              {curr.challenge.items.map((item, i) => (
+                <div key={i} className="group p-10 bg-white/5 border border-white/5 rounded-[3rem] hover:bg-white/[0.08] transition-all duration-700">
+                  <h4 className="text-2xl font-black uppercase italic tracking-tighter mb-4 text-blue-500">{item.t}</h4>
+                  <p className="text-white/40 font-bold uppercase tracking-wider leading-relaxed">{item.d}</p>
+                </div>
+              ))}
+              <div className="mt-20 p-12 bg-blue-600 rounded-[3rem] shadow-2xl">
+                <div className="text-[10px] font-black uppercase tracking-[0.4em] text-blue-200 mb-4">{curr.challenge.risk}</div>
+                <p className="text-3xl font-black italic uppercase tracking-tighter text-white">{curr.challenge.riskDesc}</p>
+              </div>
             </div>
           </div>
         </div>
       </section>
 
-      {/* Chapter 02: Solutions */}
-      <section id="products" className="relative py-48 z-10 bg-[#05050a]/80 backdrop-blur-3xl border-y border-white/5">
-        <div className="max-w-7xl mx-auto px-6 text-center">
-          <h2 className="text-blue-500 font-black text-[11px] tracking-[0.6em] uppercase mb-8 italic">{curr.products.ch}</h2>
-          <h3 className="text-6xl md:text-8xl font-black text-white leading-[1] tracking-tighter uppercase mb-32 italic">{curr.products.title}</h3>
-          
-          <div className="grid lg:grid-cols-2 gap-16 text-left">
-            <div className="group relative bg-gradient-to-b from-blue-900/20 to-black border border-white/10 rounded-[4rem] p-1 shadow-2xl transition-all duration-700 hover:scale-[1.02]">
-              <div className="bg-[#020205]/90 backdrop-blur-3xl rounded-[3.9rem] p-12 md:p-20 h-full flex flex-col border border-white/5">
-                <div className="flex justify-between items-start mb-20 text-white/5 font-black text-9xl uppercase select-none italic -translate-y-8">Sense50</div>
-                <h4 className="text-4xl font-black text-white mb-6 uppercase italic tracking-tighter">Sense 50 <span className="text-blue-500 block text-[10px] tracking-[0.5em] font-black not-italic mt-2 opacity-60 uppercase">{curr.products.s50.tag}</span></h4>
-                <p className="text-xl text-white/40 mb-12 leading-relaxed font-bold tracking-tight italic">{curr.products.s50.desc}</p>
-                <div className="grid grid-cols-2 gap-x-8 gap-y-6 mb-16 border-t border-white/5 pt-12">
+      {/* Solutions Section */}
+      <section id="suite" className="relative py-48 z-10 px-6 bg-white rounded-[5rem] text-black">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-32">
+            <div className="text-blue-600 font-black text-xs uppercase tracking-[0.8em] mb-12">{curr.products.ch}</div>
+            <h2 className="text-7xl md:text-9xl font-black uppercase italic leading-[0.8] tracking-tighter">{curr.products.title}</h2>
+          </div>
+
+          <div className="grid lg:grid-cols-2 gap-12">
+            {/* S50 */}
+            <div className="group relative overflow-hidden bg-black rounded-[4rem] p-16 text-white transition-all duration-700 hover:scale-[1.02]">
+              <div className="absolute top-0 right-0 w-96 h-96 bg-blue-600/20 blur-[100px] rounded-full"></div>
+              <div className="relative z-10">
+                <div className="bg-blue-600 inline-block px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-[0.4em] mb-12">{curr.products.s50.tag}</div>
+                <h3 className="text-6xl md:text-8xl font-black uppercase italic tracking-tighter mb-10 leading-none">S50-MARKET<br /><span className="text-blue-500">AGGREGATOR</span></h3>
+                <p className="text-xl text-white/40 font-bold uppercase tracking-widest leading-relaxed mb-16">{curr.products.s50.desc}</p>
+                <div className="grid grid-cols-2 gap-6 mb-16">
                   {curr.products.s50.feats.map(f => (
-                    <div key={f} className="border-l-2 border-blue-600 pl-4"><div className="text-white font-black text-[9px] uppercase tracking-[0.3em]">{f}</div></div>
+                    <div key={f} className="flex items-center gap-3 text-[11px] font-black uppercase tracking-widest text-blue-400">
+                      <div className="w-2 h-2 bg-blue-500 rounded-full"></div>{f}
+                    </div>
                   ))}
                 </div>
-                <div className="relative mt-auto cursor-zoom-in group/img overflow-hidden rounded-3xl" onClick={() => setActiveImage('/sense50-preview.jpg')}>
-                  <img src="/sense50-preview.jpg" alt="Interface" className="w-full grayscale group-hover/img:grayscale-0 transition-all duration-1000 group-hover:scale-105" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent"></div>
-                </div>
+                <button className="bg-white text-black px-12 py-6 rounded-full font-black uppercase italic tracking-tighter hover:bg-blue-600 hover:text-white transition-all" onClick={() => setActiveImage('/s50.jpg')}>EXPLORE ARCHITECTURE</button>
               </div>
             </div>
 
-            <div className="group relative bg-gradient-to-b from-white/10 to-black border border-white/10 rounded-[4rem] p-1 shadow-2xl transition-all duration-700 hover:scale-[1.02]">
-              <div className="bg-[#020205]/90 backdrop-blur-3xl rounded-[3.9rem] p-12 md:p-20 h-full flex flex-col border border-white/5">
-                <div className="flex justify-between items-start mb-20 text-white/5 font-black text-9xl uppercase select-none italic -translate-y-8">Trade</div>
-                <h4 className="text-4xl font-black text-white mb-6 uppercase italic tracking-tighter">IntelliTrade <span className="text-white block text-[10px] tracking-[0.5em] font-black not-italic mt-2 opacity-60 uppercase">{curr.products.it.tag}</span></h4>
-                <p className="text-xl text-white/40 mb-12 leading-relaxed font-bold tracking-tight italic">{curr.products.it.desc}</p>
-                <div className="grid grid-cols-2 gap-x-8 gap-y-6 mb-16 border-t border-white/5 pt-12">
+            {/* IT */}
+            <div className="group relative overflow-hidden bg-blue-600 rounded-[4rem] p-16 text-white transition-all duration-700 hover:scale-[1.02]">
+              <div className="absolute bottom-0 left-0 w-96 h-96 bg-white/10 blur-[100px] rounded-full"></div>
+              <div className="relative z-10">
+                <div className="bg-black/20 inline-block px-6 py-2 rounded-full text-[10px] font-black uppercase tracking-[0.4em] mb-12">{curr.products.it.tag}</div>
+                <h3 className="text-6xl md:text-8xl font-black uppercase italic tracking-tighter mb-10 leading-none">INTELLI<br /><span className="text-black">TRADE</span></h3>
+                <p className="text-xl text-white/80 font-bold uppercase tracking-widest leading-relaxed mb-16">{curr.products.it.desc}</p>
+                <div className="grid grid-cols-2 gap-6 mb-16">
                   {curr.products.it.feats.map(f => (
-                    <div key={f} className="border-l-2 border-white/20 pl-4"><div className="text-white font-black text-[9px] uppercase tracking-[0.3em]">{f}</div></div>
+                    <div key={f} className="flex items-center gap-3 text-[11px] font-black uppercase tracking-widest text-white">
+                      <div className="w-2 h-2 bg-white rounded-full"></div>{f}
+                    </div>
                   ))}
                 </div>
-                <div className="relative mt-auto cursor-zoom-in group/img overflow-hidden rounded-3xl" onClick={() => setActiveImage('/intellitrade-preview.jpg')}>
-                  <img src="/intellitrade-preview.jpg" alt="Interface" className="w-full grayscale group-hover/img:grayscale-0 transition-all duration-1000 group-hover:scale-105" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black via-transparent to-transparent"></div>
-                </div>
+                <button className="bg-black text-white px-12 py-6 rounded-full font-black uppercase italic tracking-tighter hover:bg-white hover:text-black transition-all" onClick={() => setActiveImage('/otc.jpg')}>LAUNCH PORTAL</button>
               </div>
             </div>
           </div>
-          <p className="mt-24 text-white/20 font-black uppercase tracking-[0.6em] text-[10px]">{curr.products.roadmap}</p>
+
+          <div className="mt-24 p-10 bg-black/5 rounded-[3rem] text-center">
+            <p className="text-sm font-black uppercase tracking-[0.6em] text-black/40 italic">{curr.products.roadmap}</p>
+          </div>
         </div>
       </section>
 
-      {/* Chapter 03: Philosophy */}
-      <section id="philosophy" className="relative py-48 z-10 bg-white text-black rounded-[5rem] mx-4 md:mx-12 shadow-2xl">
-        <div className="max-w-7xl mx-auto px-6 text-center">
-          <h2 className="text-blue-600 font-black text-[11px] tracking-[0.6em] uppercase mb-8 italic">{curr.philosophy.ch}</h2>
-          <h3 className="text-6xl md:text-8xl font-black text-black leading-[0.8] tracking-tighter uppercase mb-40 italic">{curr.philosophy.title}</h3>
-          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-12 text-left">
+      {/* Philosophy Section */}
+      <section id="philosophy" className="relative py-48 z-10 px-6 bg-white text-black">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-32">
+            <div className="text-blue-600 font-black text-xs uppercase tracking-[0.8em] mb-12">{curr.philosophy.ch}</div>
+            <h2 className="text-7xl md:text-9xl font-black uppercase italic leading-[0.8] tracking-tighter">{curr.philosophy.title}</h2>
+          </div>
+          <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-12">
             {curr.philosophy.items.map(p => (
               <div key={p.id} className="group border-t-4 border-black/10 pt-12 transition-all hover:border-blue-600">
                 <div className="text-blue-600 font-black text-[4rem] mb-10 italic tracking-tighter leading-none">{p.id}</div>
