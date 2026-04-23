@@ -39,6 +39,9 @@ const IntelliTradeV6 = () => {
   const [view, setView] = useState<'terminal' | 'reports'>('terminal');
   const [blocks, setBlocks] = useState<string[]>([]);
   const [orderForm, setOrderForm] = useState({ side: 'buy', amount: '' });
+  const [pendingOrders, setPendingOrders] = useState<any[]>([]);
+
+  const isAdmin = useMemo(() => account?.toLowerCase() === DEALER_WALLET.toLowerCase(), [account]);
 
   const currentPrice = useMemo(() => {
     let base = rateIDR;
@@ -73,7 +76,6 @@ const IntelliTradeV6 = () => {
       window.ethereum.on('chainChanged', handleChainChanged);
       window.ethereum.on('accountsChanged', handleAccountsChanged);
       
-      // Auto-detect if already connected
       window.ethereum.request({ method: 'eth_accounts' }).then((accs: string[]) => {
         if (accs.length > 0) {
           setAccount(accs[0]);
@@ -84,26 +86,18 @@ const IntelliTradeV6 = () => {
       });
     }
 
+    const savedPending = localStorage.getItem('pending_orders');
+    if (savedPending) setPendingOrders(JSON.parse(savedPending));
+    
+    const savedHistory = localStorage.getItem('trade_history');
+    if (savedHistory) setHistory(JSON.parse(savedHistory));
+
     return () => {
       if (window.ethereum?.removeListener) {
         window.ethereum.removeListener('chainChanged', handleChainChanged);
         window.ethereum.removeListener('accountsChanged', handleAccountsChanged);
       }
     };
-  }, []);
-
-  const disconnectWallet = () => {
-    setAccount(null);
-    setChainId(null);
-    toast.success("Wallet Disconnected");
-  };
-
-  useEffect(() => {
-    const savedPending = localStorage.getItem('pending_orders');
-    if (savedPending) setPendingOrders(JSON.parse(savedPending));
-    
-    const savedHistory = localStorage.getItem('trade_history');
-    if (savedHistory) setHistory(JSON.parse(savedHistory));
   }, []);
 
   const userPending = useMemo(() => {
@@ -120,6 +114,12 @@ const IntelliTradeV6 = () => {
     return history.filter(h => h.owner?.toLowerCase() === acc);
   }, [history, account]);
 
+  const disconnectWallet = () => {
+    setAccount(null);
+    setChainId(null);
+    toast.success("Wallet Disconnected");
+  };
+
   const connectWallet = async () => {
     if (typeof window === 'undefined' || !window.ethereum) return toast.error("Install MetaMask");
     try {
@@ -131,13 +131,8 @@ const IntelliTradeV6 = () => {
     } catch (err) {}
   };
 
-  const [pendingOrders, setPendingOrders] = useState<any[]>([]);
-  const isAdmin = account?.toLowerCase() === DEALER_WALLET.toLowerCase();
-
   const handleExecute = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Execute Triggered", { account, amount: orderForm.amount, side: orderForm.side });
-    
     if (!account) return toast.error("Connect Wallet First");
     if (!orderForm.amount || parseFloat(orderForm.amount) <= 0) return toast.error("Input Valid Amount");
 
@@ -147,7 +142,6 @@ const IntelliTradeV6 = () => {
     try {
       if (isBuy) {
         const tId = toast.loading("Submitting Institutional Buy Request...");
-        
         const newOrder = {
           id: "ORD-" + Math.random().toString(36).slice(2, 9).toUpperCase(),
           targetAddress: account.toLowerCase(),
@@ -168,7 +162,6 @@ const IntelliTradeV6 = () => {
         toast.success("Request Submitted. Awaiting Admin Approval.", { id: tId });
         setOrderForm(prev => ({ ...prev, amount: '' }));
       } else {
-        // SELL Logic... (stays same but ensure it uses account.toLowerCase())
         const tId = toast.loading("Initiating Sell Transfer to Vault...");
         const provider = new ethers.BrowserProvider(window.ethereum);
         const signer = await provider.getSigner();
@@ -267,18 +260,13 @@ const IntelliTradeV6 = () => {
     }
   };
 
-  useEffect(() => {
-    const saved = localStorage.getItem('pending_orders');
-    if (saved) setPendingOrders(JSON.parse(saved));
-  }, []);
-
   const exportPDF = () => {
     const doc = new jsPDF();
     doc.text('Trade Audit Logs', 14, 20);
     autoTable(doc, {
       startY: 30,
       head: [['Ticket', 'Time', 'Asset', 'Side', 'Qty', 'Total']],
-      body: history.map(t => [t.id, t.date, t.asset, t.side, t.amount, t.total]),
+      body: userHistory.map(t => [t.id, t.date, t.asset, t.side, t.amount, t.total]),
     });
     doc.save('Report.pdf');
   };
@@ -403,7 +391,6 @@ const IntelliTradeV6 = () => {
                 <button onClick={exportPDF} className={`flex items-center gap-3 px-8 py-4 border border-white/10 text-[10px] font-black uppercase tracking-widest hover:bg-white hover:text-black transition-all rounded-full font-sans`}><FileDown size={18} /> Export PDF</button>
              </div>
              <div className="space-y-6 font-mono font-mono">
-                {/* Pending Requests Section */}
                 {userPending.length > 0 && (
                   <div className="mb-10 space-y-4">
                     <h3 className="text-xl font-black text-blue-500 uppercase italic tracking-tighter">
