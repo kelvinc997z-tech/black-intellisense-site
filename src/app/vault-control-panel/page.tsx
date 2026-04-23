@@ -3,7 +3,8 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import { 
   ShieldCheck, RefreshCw, ArrowLeft, ListFilter, Terminal, 
-  Wallet, Activity, Zap, ArrowUpRight, History, Search, Box
+  Wallet, Activity, Zap, ArrowUpRight, History, Search, Box,
+  ExternalLink
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { ethers } from 'ethers';
