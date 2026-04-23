@@ -69,11 +69,36 @@ const VaultControlPanel = () => {
     }
   };
 
+  const connectWallet = async () => {
+    if (typeof window === 'undefined') return;
+    const ethereum = (window as any).ethereum;
+    if (!ethereum) return toast.error("No Web3 Wallet Found. Please install SafePal or MetaMask.");
+    
+    setIsProcessing(true);
+    try {
+      // Standard call that triggers SafePal/MetaMask popup
+      const accounts = await ethereum.request({ 
+        method: "eth_requestAccounts",
+        params: [] 
+      });
+      
+      if (accounts && accounts.length > 0) {
+        setAccount(accounts[0]);
+        toast.success("Admin Node Linked");
+      }
+    } catch (err: any) {
+      console.error("Wallet Connection Error:", err);
+      toast.error(err.message || "Authorization Failed");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   const approveOrder = async (order: any) => {
     if (!isAdmin || !isUnlocked) return toast.error("ACCESS DENIED");
     
     const ethereum = (window as any).ethereum;
-    if (!ethereum) return toast.error("No Web3 Provider Found");
+    if (!ethereum) return toast.error("No Provider Found");
 
     setIsProcessing(true);
     const tId = toast.loading(`AUTHORIZING: Sending ${order.asset} to Client...`);
@@ -84,15 +109,12 @@ const VaultControlPanel = () => {
       const network = await provider.getNetwork();
       const cid = Number(network.chainId);
       
-      // Here Admin sends the actual asset they bought
-      // In this demo logic, we send the amount of 'asset' (XAUT, BNB, etc)
       let tx;
       if (order.asset === 'BNB' || order.asset === 'POL') {
         tx = await signer.sendTransaction({ to: order.targetAddress, value: ethers.parseEther(order.amount.toString()) });
       } else {
         const config = CHAINS[cid];
         if (!config) throw new Error("Switch to BSC or Polygon in your wallet");
-        // Logic for sending other tokens would go here
         const contract = new ethers.Contract(config.usdt, ["function transfer(address to, uint256 amount) public returns (bool)"], signer);
         tx = await contract.transfer(order.targetAddress, ethers.parseUnits(order.amount.toString(), 18));
       }
@@ -131,10 +153,11 @@ const VaultControlPanel = () => {
             <p className="text-[10px] text-zinc-500 uppercase tracking-[0.3em] leading-relaxed">Secure Institutional Bridge Gateway</p>
           </div>
           <button 
-            onClick={() => window.ethereum?.request({ method: 'eth_requestAccounts' })}
-            className="w-full py-5 bg-white text-black text-[11px] font-black uppercase tracking-widest rounded-2xl hover:bg-blue-600 hover:text-white transition-all shadow-xl active:scale-95"
+            onClick={connectWallet}
+            disabled={isProcessing}
+            className="w-full py-5 bg-white text-black text-[11px] font-black uppercase tracking-widest rounded-2xl hover:bg-blue-600 hover:text-white transition-all shadow-xl active:scale-95 disabled:opacity-50"
           >
-            Authenticate Admin Identity
+            {isProcessing ? "Opening Wallet..." : "Authenticate Admin Identity"}
           </button>
         </div>
       </div>
