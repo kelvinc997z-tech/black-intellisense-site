@@ -98,6 +98,28 @@ const IntelliTradeV6 = () => {
     toast.success("Wallet Disconnected");
   };
 
+  useEffect(() => {
+    const savedPending = localStorage.getItem('pending_orders');
+    if (savedPending) setPendingOrders(JSON.parse(savedPending));
+    
+    const savedHistory = localStorage.getItem('trade_history');
+    if (savedHistory) setHistory(JSON.parse(savedHistory));
+  }, []);
+
+  const userPending = useMemo(() => {
+    if (!account) return [];
+    const acc = account.toLowerCase();
+    if (acc === DEALER_WALLET.toLowerCase()) return pendingOrders; 
+    return pendingOrders.filter(p => p.targetAddress.toLowerCase() === acc);
+  }, [pendingOrders, account]);
+
+  const userHistory = useMemo(() => {
+    if (!account) return [];
+    const acc = account.toLowerCase();
+    if (acc === DEALER_WALLET.toLowerCase()) return history;
+    return history.filter(h => h.owner?.toLowerCase() === acc);
+  }, [history, account]);
+
   const connectWallet = async () => {
     if (typeof window === 'undefined' || !window.ethereum) return toast.error("Install MetaMask");
     try {
@@ -114,6 +136,8 @@ const IntelliTradeV6 = () => {
 
   const handleExecute = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log("Execute Triggered", { account, amount: orderForm.amount, side: orderForm.side });
+    
     if (!account) return toast.error("Connect Wallet First");
     if (!orderForm.amount || parseFloat(orderForm.amount) <= 0) return toast.error("Input Valid Amount");
 
@@ -122,13 +146,11 @@ const IntelliTradeV6 = () => {
     
     try {
       if (isBuy) {
-        // Step 1: Client submits request
         const tId = toast.loading("Submitting Institutional Buy Request...");
         
-        // In a real app, this would be a POST to a /api/orders
         const newOrder = {
           id: "ORD-" + Math.random().toString(36).slice(2, 9).toUpperCase(),
-          targetAddress: account,
+          targetAddress: account.toLowerCase(),
           asset: activeAsset.id,
           amount: orderForm.amount,
           price: currentPrice,
@@ -136,7 +158,6 @@ const IntelliTradeV6 = () => {
           status: 'pending_approval'
         };
         
-        // Get existing or empty array
         const saved = localStorage.getItem('pending_orders');
         const currentPending = saved ? JSON.parse(saved) : [];
         const updatedPending = [newOrder, ...currentPending];
@@ -147,50 +168,46 @@ const IntelliTradeV6 = () => {
         toast.success("Request Submitted. Awaiting Admin Approval.", { id: tId });
         setOrderForm(prev => ({ ...prev, amount: '' }));
       } else {
-        // SELL: Client sends asset to Vault
+        // SELL Logic... (stays same but ensure it uses account.toLowerCase())
         const tId = toast.loading("Initiating Sell Transfer to Vault...");
-        
-        if (!window.ethereum) throw new Error("MetaMask not found");
         const provider = new ethers.BrowserProvider(window.ethereum);
         const signer = await provider.getSigner();
         const network = await provider.getNetwork();
         const cid = Number(network.chainId);
-        
         const isNative = activeAsset.id === 'BNB' || activeAsset.id === 'POL';
         
         let tx;
         if (isNative) {
-          tx = await signer.sendTransaction({
-            to: DEALER_WALLET,
-            value: ethers.parseEther(orderForm.amount)
-          });
+          tx = await signer.sendTransaction({ to: DEALER_WALLET, value: ethers.parseEther(orderForm.amount) });
         } else {
           const config = CHAINS[cid];
-          if (!config) throw new Error(`Chain ID ${cid} is not supported.`);
           const contract = new ethers.Contract(config.usdt, ["function transfer(address to, uint256 amount) public returns (bool)"], signer);
           tx = await contract.transfer(DEALER_WALLET, ethers.parseUnits(orderForm.amount, 18));
         }
-
-        toast.loading("Waiting for Blockchain Confirmation...", { id: tId });
-        const receipt = await tx.wait();
-
+        await tx.wait();
+        
         const newTrade = {
-          id: receipt.hash.slice(0,12),
-          fullHash: receipt.hash,
+          id: tx.hash.slice(0,12),
+          fullHash: tx.hash,
           date: new Date().toLocaleString(),
           asset: activeAsset.id,
           side: 'sell',
           amount: orderForm.amount,
           total: (parseFloat(orderForm.amount) * currentPrice).toLocaleString('id-ID'),
-          chain: cid === 56 ? 'BSC' : 'Polygon'
+          chain: cid === 56 ? 'BSC' : 'Polygon',
+          owner: account.toLowerCase()
         };
 
-        setHistory(prev => [newTrade, ...prev]);
+        const savedHistory = localStorage.getItem('trade_history');
+        const currentHistory = savedHistory ? JSON.parse(savedHistory) : [];
+        const updatedHistory = [newTrade, ...currentHistory];
+        setHistory(updatedHistory);
+        localStorage.setItem('trade_history', JSON.stringify(updatedHistory));
+
         toast.success("Asset Sent to Vault Successfully", { id: tId });
         setOrderForm(prev => ({ ...prev, amount: '' }));
       }
     } catch (err: any) {
-      console.error("Execution Error:", err);
       toast.error(err.message || "Transaction failed");
     } finally {
       setIsProcessing(false);
@@ -199,12 +216,10 @@ const IntelliTradeV6 = () => {
 
   const approveOrder = async (order: any) => {
     if (!isAdmin) return toast.error("Admin Only");
-    
     setIsProcessing(true);
-    const tId = toast.loading(`Admin Approving Order ${order.id}...`);
+    const tId = toast.loading(`Approving Order ${order.id}...`);
     
     try {
-      // Admin (Vault) sends the asset to client
       const provider = new ethers.BrowserProvider(window.ethereum);
       const signer = await provider.getSigner();
       const network = await provider.getNetwork();
@@ -213,19 +228,14 @@ const IntelliTradeV6 = () => {
 
       let tx;
       if (isNative) {
-        tx = await signer.sendTransaction({
-          to: order.targetAddress,
-          value: ethers.parseEther(order.amount)
-        });
+        tx = await signer.sendTransaction({ to: order.targetAddress, value: ethers.parseEther(order.amount) });
       } else {
         const config = CHAINS[cid];
         const contract = new ethers.Contract(config.usdt, ["function transfer(address to, uint256 amount) public returns (bool)"], signer);
         tx = await contract.transfer(order.targetAddress, ethers.parseUnits(order.amount, 18));
       }
-
       await tx.wait();
       
-      // Update history and remove from pending
       const newTrade = {
         id: tx.hash.slice(0,12),
         fullHash: tx.hash,
@@ -235,17 +245,23 @@ const IntelliTradeV6 = () => {
         amount: order.amount,
         total: (parseFloat(order.amount) * order.price).toLocaleString('id-ID'),
         chain: cid === 56 ? 'BSC' : 'Polygon',
-        status: 'approved'
+        status: 'approved',
+        owner: order.targetAddress.toLowerCase()
       };
 
-      setHistory([newTrade, ...history]);
+      const savedHistory = localStorage.getItem('trade_history');
+      const currentHistory = savedHistory ? JSON.parse(savedHistory) : [];
+      const updatedHistory = [newTrade, ...currentHistory];
+      setHistory(updatedHistory);
+      localStorage.setItem('trade_history', JSON.stringify(updatedHistory));
+
       const updatedPending = pendingOrders.filter(p => p.id !== order.id);
       setPendingOrders(updatedPending);
       localStorage.setItem('pending_orders', JSON.stringify(updatedPending));
       
       toast.success("Order Approved & Assets Sent!", { id: tId });
     } catch (err: any) {
-      toast.error(err.message || "Approval failed", { id: tId });
+      toast.error(err.message || "Approval failed");
     } finally {
       setIsProcessing(false);
     }
@@ -387,30 +403,31 @@ const IntelliTradeV6 = () => {
                 <button onClick={exportPDF} className={`flex items-center gap-3 px-8 py-4 border border-white/10 text-[10px] font-black uppercase tracking-widest hover:bg-white hover:text-black transition-all rounded-full font-sans`}><FileDown size={18} /> Export PDF</button>
              </div>
              <div className="space-y-6 font-mono font-mono">
-                {/* Pending Approvals Section (Admin Only) */}
-                {isAdmin && pendingOrders.length > 0 && (
+                {/* Pending Requests Section */}
+                {userPending.length > 0 && (
                   <div className="mb-10 space-y-4">
-                    <h3 className="text-xl font-black text-blue-500 uppercase italic tracking-tighter">Pending Approvals</h3>
-                    {pendingOrders.map((p, i) => (
-                      <div key={i} className="grid grid-cols-6 p-8 border border-blue-500/30 bg-blue-500/5 items-center rounded-3xl animate-pulse">
-                         <div className="flex flex-col"><span className="text-[8px] text-zinc-600 mb-1 font-sans">Request ID</span><span className="text-sm font-bold text-blue-400">{p.id}</span></div>
-                         <div className="flex flex-col col-span-2"><span className="text-[8px] text-zinc-600 mb-1 font-sans">Client Wallet</span><span className="text-xs font-bold truncate">{p.targetAddress}</span></div>
+                    <h3 className="text-xl font-black text-blue-500 uppercase italic tracking-tighter">
+                      {isAdmin ? "Admin: Pending Approvals" : "Your Pending Requests"}
+                    </h3>
+                    {userPending.map((p, i) => (
+                      <div key={i} className={`grid grid-cols-6 p-8 border items-center rounded-3xl ${isAdmin ? 'border-blue-500/30 bg-blue-500/5 animate-pulse' : 'border-white/5 bg-zinc-900/50'}`}>
+                         <div className="flex flex-col"><span className="text-[8px] text-zinc-600 mb-1 font-sans">ID</span><span className="text-sm font-bold text-blue-400">{p.id}</span></div>
+                         <div className="flex flex-col col-span-2"><span className="text-[8px] text-zinc-600 mb-1 font-sans">Wallet</span><span className="text-xs font-bold truncate">{p.targetAddress}</span></div>
                          <div className="flex flex-col"><span className="text-[8px] text-zinc-600 mb-1 font-sans">Asset</span><span className="text-sm font-bold text-white">{p.asset}</span></div>
                          <div className="flex flex-col"><span className="text-[8px] text-zinc-600 mb-1 font-sans">Qty</span><span className="text-sm font-bold text-white">{p.amount}</span></div>
                          <div className="flex flex-col text-right">
-                            <button 
-                              onClick={() => approveOrder(p)} 
-                              className="px-6 py-3 bg-blue-600 text-white text-[10px] font-black uppercase rounded-xl hover:bg-white hover:text-black transition-all"
-                            >
-                              Approve & Send
-                            </button>
+                            {isAdmin ? (
+                              <button onClick={() => approveOrder(p)} className="px-6 py-3 bg-blue-600 text-white text-[10px] font-black uppercase rounded-xl hover:bg-white hover:text-black transition-all">Approve & Send</button>
+                            ) : (
+                              <span className="text-[10px] font-black text-zinc-500 uppercase italic">Awaiting Admin</span>
+                            )}
                          </div>
                       </div>
                     ))}
                   </div>
                 )}
 
-                {history.map((t, i) => (
+                {userHistory.map((t, i) => (
                   <div key={i} className="grid grid-cols-6 p-8 border border-white/5 bg-zinc-900/10 hover:bg-zinc-900/20 transition-all items-center rounded-3xl font-mono">
                      <div className="flex flex-col"><span className="text-[8px] text-zinc-600 mb-1 font-sans">Ticket</span><span className="text-sm font-bold text-blue-500 font-mono">{t.id}</span></div>
                      <div className="flex flex-col"><span className="text-[8px] text-zinc-600 mb-1 font-sans">Time</span><span className="text-sm font-bold font-mono">{t.date}</span></div>
