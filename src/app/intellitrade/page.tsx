@@ -92,6 +92,12 @@ const IntelliTradeV6 = () => {
     };
   }, []);
 
+  const disconnectWallet = () => {
+    setAccount(null);
+    setChainId(null);
+    toast.success("Wallet Disconnected");
+  };
+
   const connectWallet = async () => {
     if (typeof window === 'undefined' || !window.ethereum) return toast.error("Install MetaMask");
     try {
@@ -281,14 +287,24 @@ const IntelliTradeV6 = () => {
             <button onClick={() => setView('terminal')} className={`px-6 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${view === 'terminal' ? 'bg-blue-600 text-white' : 'text-zinc-500'}`}>Terminal</button>
             <button onClick={() => setView('reports')} className={`px-6 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${view === 'reports' ? 'bg-blue-600 text-white' : 'text-zinc-500'}`}>Reports</button>
           </nav>
-          <button onClick={connectWallet} className="px-8 py-3 bg-zinc-900 border border-white/10 text-[10px] font-black tracking-widest uppercase hover:bg-white hover:text-black transition-all flex flex-col items-center gap-1">
-            <span>{account ? `KYB: ${account.slice(0,8)}...` : "VERIFY ENTITY"}</span>
-            {account && chainId && (
-              <span className="text-[8px] text-blue-500 font-bold border-t border-white/5 pt-1 w-full text-center">
-                NETWORK: {CHAINS[chainId]?.name || `ID ${chainId}`}
-              </span>
-            )}
-          </button>
+          <div className="flex items-center gap-2">
+            <button 
+              onClick={account ? disconnectWallet : connectWallet} 
+              className="px-8 py-3 bg-zinc-900 border border-white/10 text-[10px] font-black tracking-widest uppercase hover:bg-white hover:text-black transition-all flex flex-col items-center gap-1 group relative"
+            >
+              <span>{account ? `KYB: ${account.slice(0,8)}...` : "VERIFY ENTITY"}</span>
+              {account && chainId && (
+                <span className="text-[8px] text-blue-500 font-bold border-t border-white/5 pt-1 w-full text-center">
+                  NETWORK: {CHAINS[chainId]?.name || `ID ${chainId}`}
+                </span>
+              )}
+              {account && (
+                <span className="absolute -bottom-10 left-1/2 -translate-x-1/2 bg-red-600 text-white text-[8px] py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity">
+                  CLICK TO SIGN OUT
+                </span>
+              )}
+            </button>
+          </div>
         </header>
 
         {view === 'terminal' ? (
