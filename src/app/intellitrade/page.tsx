@@ -57,20 +57,29 @@ const IntelliTradeV6 = () => {
   const vaultLiquidity = useMemo(() => (1250450.75).toLocaleString(), []);
 
   const refreshData = useCallback(async () => {
-    if (!account) return;
+    if (!account) {
+      console.log("refreshData: No account connected");
+      return;
+    }
     try {
       const acc = account.toLowerCase();
+      // Use absolute URL to avoid any environment relative path issues
       const endpoint = isAdmin ? "/api/orders" : `/api/orders?address=${acc}`;
-      const res = await fetch(endpoint);
+      console.log(`Fetching history from: ${endpoint}`);
+      
+      const res = await fetch(endpoint, { cache: 'no-store' });
       if (res.ok) {
         const data = await res.json();
-        // Pending: Only BUYs that are awaiting admin
+        console.log("Database Sync Result:", data);
+        
+        // Update client view
         setPendingOrders(data.filter((o: any) => o.status === 'pending' && o.side === 'buy'));
-        // History: Everything else (including SELLs and approved BUYs)
         setHistory(data.filter((o: any) => o.status !== 'pending' || o.side === 'sell'));
+      } else {
+        console.error("Database Fetch Failed:", res.status);
       }
     } catch (err) {
-      console.error("Refresh Error:", err);
+      console.error("Network/Database Error:", err);
     }
   }, [account, isAdmin]);
 
