@@ -59,13 +59,19 @@ const IntelliTradeV6 = () => {
   const refreshData = useCallback(async () => {
     if (!account) return;
     try {
-      const res = await fetch(`/api/orders${isAdmin ? '' : `?address=${account}`}`);
+      const acc = account.toLowerCase();
+      const endpoint = isAdmin ? "/api/orders" : `/api/orders?address=${acc}`;
+      const res = await fetch(endpoint);
       if (res.ok) {
         const data = await res.json();
-        setPendingOrders(data.filter((o: any) => o.status === 'pending'));
-        setHistory(data.filter((o: any) => o.status !== 'pending'));
+        // Pending: Only BUYs that are awaiting admin
+        setPendingOrders(data.filter((o: any) => o.status === 'pending' && o.side === 'buy'));
+        // History: Everything else (including SELLs and approved BUYs)
+        setHistory(data.filter((o: any) => o.status !== 'pending' || o.side === 'sell'));
       }
-    } catch (err) {}
+    } catch (err) {
+      console.error("Refresh Error:", err);
+    }
   }, [account, isAdmin]);
 
   useEffect(() => {
