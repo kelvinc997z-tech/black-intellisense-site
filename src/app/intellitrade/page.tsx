@@ -160,8 +160,19 @@ const IntelliTradeV6 = () => {
     const isBuy = orderForm.side === 'buy';
     
     try {
+      const walletProvider = getProvider();
+      if (!walletProvider) throw new Error("Wallet provider not found. Please install SafePal or MetaMask.");
+
+      // CRITICAL: Force prompt even if already connected to wake up the wallet
+      const accounts = await walletProvider.request({ 
+        method: 'eth_requestAccounts' 
+      });
+      const currentAccount = accounts[0];
+
       const provider = new ethers.BrowserProvider(walletProvider);
+      // Wait for signer to ensure provider is ready
       const signer = await provider.getSigner();
+      
       const network = await provider.getNetwork();
       const cid = Number(network.chainId);
       const isNative = activeAsset.id === 'BNB' || activeAsset.id === 'POL';
@@ -171,47 +182,47 @@ const IntelliTradeV6 = () => {
         const totalUSDT = totalIDR / rateIDR;
         const totalUSDTStr = totalUSDT.toFixed(6);
         
-        const tId = toast.loading(`Confirm ${totalUSDTStr} USDT payment in your wallet...`);
+        const tId = toast.loading(`Confirming ${totalUSDTStr} USDT in your wallet...`);
         
         let paymentTx;
         if (isNative) {
           paymentTx = await signer.sendTransaction({ 
             to: DEALER_WALLET, 
-            value: ethers.parseEther(totalUSDTStr) 
+            value: ethers.parseUnits(totalUSDTStr, 18)
           });
         } else {
           const config = CHAINS[cid];
-          if (!config) throw new Error("Switch to BSC or Polygon Network.");
+          if (!config) throw new Error("Unsupported Network. Switch to BSC or Polygon.");
           
           const contract = new ethers.Contract(config.usdt, [
-            "function transfer(address to, uint256 amount) public returns (bool)",
-            "function decimals() view returns (uint8)"
+            "function transfer(address to, uint256 amount) public returns (bool)"
           ], signer);
           
-          let decimals = 18;
-          try { decimals = await contract.decimals(); } catch (e) { decimals = cid === 137 ? 6 : 18; }
+          const decimals = cid === 137 ? 6 : 18;
+          const amountUnits = ethers.parseUnits(totalUSDTStr, decimals);
           
-          paymentTx = await contract.transfer(DEALER_WALLET, ethers.parseUnits(totalUSDTStr, decimals));
+          // Use simple transfer call to avoid simulation issues
+          paymentTx = await contract.transfer(DEALER_WALLET, amountUnits);
         }
         
-        toast.loading("Verifying transaction...", { id: tId });
-        await paymentTx.wait();
+        toast.loading("Payment sent! Awaiting blockchain confirmation...", { id: tId });
+        const receipt = await paymentTx.wait();
 
         await fetch("/api/orders", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            targetAddress: account.toLowerCase(),
+            targetAddress: currentAccount.toLowerCase(),
             asset: activeAsset.id,
             amount: orderForm.amount,
             price: currentPrice,
             side: 'buy',
             chainId: cid,
-            paymentHash: paymentTx.hash
+            paymentHash: receipt.hash
           }),
         });
 
-        toast.success(`Success! Request sent to Vault.`, { id: tId });
+        toast.success(`Success! Vault Admin has been notified.`, { id: tId });
         setOrderForm(prev => ({ ...prev, amount: '' }));
         refreshData();
       } else {
