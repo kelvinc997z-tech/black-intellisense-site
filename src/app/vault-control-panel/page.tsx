@@ -18,6 +18,10 @@ const VaultControlPanel = () => {
   const [account, setAccount] = useState<string | null>(null);
   const [pendingOrders, setPendingOrders] = useState<any[]>([]);
   const [isProcessing, setIsProcessing] = useState(false);
+  const [pinInput, setPinInput] = useState("");
+  const [isUnlocked, setIsUnlocked] = useState(false);
+
+  const ADMIN_PIN = "2026"; // Default PIN
 
   const isAdmin = useMemo(() => account?.toLowerCase() === DEALER_WALLET.toLowerCase(), [account]);
 
@@ -26,15 +30,29 @@ const VaultControlPanel = () => {
       window.ethereum.request({ method: 'eth_accounts' }).then((accs: string[]) => {
         if (accs.length > 0) setAccount(accs[0]);
       });
-      window.ethereum.on('accountsChanged', (accs: any) => setAccount(accs[0] || null));
+      window.ethereum.on('accountsChanged', (accs: any) => {
+          setAccount(accs[0] || null);
+          setIsUnlocked(false); // Relock on account change
+      });
     }
 
     const savedPending = localStorage.getItem('pending_orders');
     if (savedPending) setPendingOrders(JSON.parse(savedPending));
   }, []);
 
+  const handlePinSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (pinInput === ADMIN_PIN) {
+      setIsUnlocked(true);
+      toast.success("Security Clearance Granted");
+    } else {
+      toast.error("INVALID PIN: ACCESS DENIED");
+      setPinInput("");
+    }
+  };
+
   const approveOrder = async (order: any) => {
-    if (!isAdmin) return toast.error("ACCESS DENIED: Unauthorized Entity");
+    if (!isAdmin || !isUnlocked) return toast.error("ACCESS DENIED: Unauthorized Entity");
     setIsProcessing(true);
     const tId = toast.loading(`Approving Release for ${order.id}...`);
     
@@ -57,12 +75,10 @@ const VaultControlPanel = () => {
       
       await tx.wait();
       
-      // Update local storage and state
       const updatedPending = pendingOrders.filter(p => p.id !== order.id);
       setPendingOrders(updatedPending);
       localStorage.setItem('pending_orders', JSON.stringify(updatedPending));
 
-      // Add to history
       const savedHistory = localStorage.getItem('trade_history');
       const currentHistory = savedHistory ? JSON.parse(savedHistory) : [];
       const newTrade = {
@@ -90,7 +106,7 @@ const VaultControlPanel = () => {
   if (!account) {
     return (
       <div className="min-h-screen bg-[#010102] flex items-center justify-center p-8">
-        <div className="max-w-md w-full bg-zinc-900/50 border border-white/5 p-12 rounded-[3rem] text-center space-y-8">
+        <div className="max-w-md w-full bg-zinc-900/50 border border-white/5 p-12 rounded-[3rem] text-center space-y-8 shadow-2xl">
           <ShieldCheck className="mx-auto text-blue-500" size={64} />
           <h1 className="text-2xl font-black uppercase italic tracking-tighter text-white">Security Protocol Active</h1>
           <p className="text-xs text-zinc-500 uppercase tracking-widest leading-relaxed">Connect Institutional Wallet to access the Vault Control Panel.</p>
@@ -113,6 +129,38 @@ const VaultControlPanel = () => {
           <h1 className="text-2xl font-black uppercase italic tracking-tighter text-red-500">Access Restricted</h1>
           <p className="text-xs text-zinc-500 uppercase tracking-widest leading-relaxed">Account {account.slice(0,10)}... is not authorized for Vault operations.</p>
           <Link href="/intellitrade" className="block text-[10px] font-black uppercase text-zinc-400 hover:text-white transition-all">Back to Terminal</Link>
+        </div>
+      </div>
+    );
+  }
+
+  if (!isUnlocked) {
+    return (
+      <div className="min-h-screen bg-[#010102] flex items-center justify-center p-8">
+        <div className="max-w-md w-full bg-zinc-900/50 border border-red-500/20 p-12 rounded-[3rem] text-center space-y-8 shadow-[0_0_50px_rgba(220,38,38,0.1)]">
+          <ShieldCheck className="mx-auto text-red-500" size={64} />
+          <div className="space-y-2">
+            <h1 className="text-2xl font-black uppercase italic tracking-tighter text-white">Identity Verification</h1>
+            <p className="text-[8px] text-zinc-500 uppercase tracking-widest leading-relaxed">Enter Administrative Secure PIN to Unlock Control Panel</p>
+          </div>
+          <form onSubmit={handlePinSubmit} className="space-y-6">
+            <input 
+              type="password" 
+              maxLength={6}
+              value={pinInput}
+              onChange={(e) => setPinInput(e.target.value)}
+              placeholder="••••"
+              className="w-full bg-black border border-white/10 p-6 rounded-2xl text-center text-3xl font-black tracking-[0.5em] text-red-500 focus:border-red-600 outline-none transition-all"
+              autoFocus
+            />
+            <button 
+              type="submit"
+              className="w-full py-4 bg-red-600 text-white text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-white hover:text-black transition-all"
+            >
+              Verify Authority
+            </button>
+          </form>
+          <Link href="/intellitrade" className="block text-[8px] font-black uppercase text-zinc-600 hover:text-white transition-all">Cancel Authorization</Link>
         </div>
       </div>
     );
