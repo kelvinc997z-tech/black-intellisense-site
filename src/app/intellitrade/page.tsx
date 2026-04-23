@@ -128,14 +128,32 @@ const IntelliTradeV6 = () => {
   };
 
   const connectWallet = async () => {
-    if (typeof window === 'undefined' || !window.ethereum) return toast.error("Install MetaMask");
+    if (typeof window === 'undefined') return;
+    
+    const ethereum = (window as any).ethereum;
+    if (!ethereum) return toast.error("No Web3 Wallet Found. Please install SafePal or MetaMask.");
+
+    setIsProcessing(true);
     try {
-      const provider = new ethers.BrowserProvider(window.ethereum);
-      const accounts = await provider.send("eth_requestAccounts", []);
+      // For SafePal and some other wallets, we might need to specifically request 
+      // permissions if multiple providers exist
+      const accounts = await ethereum.request({ 
+        method: "eth_requestAccounts",
+        params: [] 
+      });
+      
+      const provider = new ethers.BrowserProvider(ethereum);
       const network = await provider.getNetwork();
+      
       setAccount(accounts[0]);
       setChainId(Number(network.chainId));
-    } catch (err) {}
+      toast.success("Identity Verified");
+    } catch (err: any) {
+      console.error("Wallet Connection Error:", err);
+      toast.error(err.message || "Connection Failed");
+    } finally {
+      setIsProcessing(false);
+    }
   };
 
   const handleExecute = async (e: React.FormEvent) => {

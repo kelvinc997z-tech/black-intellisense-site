@@ -23,7 +23,10 @@ const VaultControlPanel = () => {
 
   const ADMIN_PIN = "872139"; 
 
-  const isAdmin = useMemo(() => account?.toLowerCase() === DEALER_WALLET.toLowerCase(), [account]);
+  const isAdmin = useMemo(() => {
+    if (!account) return false;
+    return account.toLowerCase() === DEALER_WALLET.toLowerCase();
+  }, [account]);
 
   const fetchPending = async () => {
     try {
@@ -61,13 +64,33 @@ const VaultControlPanel = () => {
     }
   };
 
+  const connectWallet = async () => {
+    if (typeof window === 'undefined') return;
+    const ethereum = (window as any).ethereum;
+    if (!ethereum) return toast.error("No Web3 Wallet Found.");
+    setIsProcessing(true);
+    try {
+      const accounts = await ethereum.request({ method: "eth_requestAccounts" });
+      setAccount(accounts[0]);
+      toast.success("Wallet Connected");
+    } catch (err: any) {
+      toast.error(err.message || "Connection Failed");
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
   const approveOrder = async (order: any) => {
     if (!isAdmin || !isUnlocked) return toast.error("ACCESS DENIED");
+    
+    const ethereum = (window as any).ethereum;
+    if (!ethereum) return toast.error("No Provider Found");
+
     setIsProcessing(true);
     const tId = toast.loading(`Approving Release for ${order.id}...`);
     
     try {
-      const provider = new ethers.BrowserProvider(window.ethereum);
+      const provider = new ethers.BrowserProvider(ethereum);
       const signer = await provider.getSigner();
       const network = await provider.getNetwork();
       const cid = Number(network.chainId);
@@ -78,13 +101,13 @@ const VaultControlPanel = () => {
         tx = await signer.sendTransaction({ to: order.targetAddress, value: ethers.parseEther(order.amount.toString()) });
       } else {
         const config = CHAINS[cid];
+        if (!config) throw new Error("Switch to BSC or Polygon in SafePal");
         const contract = new ethers.Contract(config.usdt, ["function transfer(address to, uint256 amount) public returns (bool)"], signer);
         tx = await contract.transfer(order.targetAddress, ethers.parseUnits(order.amount.toString(), 18));
       }
       
       await tx.wait();
       
-      // Update Database
       await fetch("/api/orders", {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
@@ -110,7 +133,7 @@ const VaultControlPanel = () => {
         <div className="max-w-md w-full bg-zinc-900/50 border border-white/5 p-12 rounded-[3rem] text-center space-y-8 shadow-2xl">
           <ShieldCheck className="mx-auto text-blue-500" size={64} />
           <h1 className="text-2xl font-black uppercase italic tracking-tighter text-white">Security Protocol Active</h1>
-          <button onClick={() => window.ethereum?.request({ method: 'eth_requestAccounts' })} className="w-full py-4 bg-white text-black text-[10px] font-black uppercase rounded-xl hover:bg-blue-600 hover:text-white transition-all">Connect Admin Wallet</button>
+          <button onClick={connectWallet} className="w-full py-4 bg-white text-black text-[10px] font-black uppercase tracking-widest rounded-xl hover:bg-blue-600 hover:text-white transition-all">Connect Admin Wallet</button>
         </div>
       </div>
     );
