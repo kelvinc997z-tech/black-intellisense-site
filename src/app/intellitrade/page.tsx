@@ -109,17 +109,17 @@ const IntelliTradeV6 = () => {
   const handleExecute = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!account) return toast.error("Connect Wallet First");
-    if (!orderForm.amount) return toast.error("Input Amount");
+    if (!orderForm.amount || parseFloat(orderForm.amount) <= 0) return toast.error("Input Valid Amount");
 
     const isBuy = orderForm.side === 'buy';
+    setIsProcessing(true);
     
-    if (isBuy) {
-      // Step 1: Client submits request, stored in a pending state (or database in real app)
-      setIsProcessing(true);
-      const tId = toast.loading("Submitting Institutional Buy Request...");
-      
-      try {
-        // In a real app, this would be a POST to a /api/orders to save as "pending_approval"
+    try {
+      if (isBuy) {
+        // Step 1: Client submits request
+        const tId = toast.loading("Submitting Institutional Buy Request...");
+        
+        // In a real app, this would be a POST to a /api/orders
         const newOrder = {
           id: "ORD-" + Math.random().toString(36).slice(2, 9).toUpperCase(),
           targetAddress: account,
@@ -130,43 +130,64 @@ const IntelliTradeV6 = () => {
           status: 'pending_approval'
         };
         
-        // Simulating persistent storage by adding to state and localStorage
-        const updatedPending = [newOrder, ...pendingOrders];
+        // Get existing or empty array
+        const saved = localStorage.getItem('pending_orders');
+        const currentPending = saved ? JSON.parse(saved) : [];
+        const updatedPending = [newOrder, ...currentPending];
+        
         setPendingOrders(updatedPending);
         localStorage.setItem('pending_orders', JSON.stringify(updatedPending));
 
         toast.success("Request Submitted. Awaiting Admin Approval.", { id: tId });
-        setOrderForm({ ...orderForm, amount: '' });
-      } catch (err: any) {
-        toast.error("Failed to submit request", { id: tId });
-      } finally {
-        setIsProcessing(false);
-      }
-    } else {
-      // SELL: Client sends asset to Vault as before
-      setIsProcessing(true);
-      const tId = toast.loading("Confirming on MetaMask...");
-      try {
+        setOrderForm(prev => ({ ...prev, amount: '' }));
+      } else {
+        // SELL: Client sends asset to Vault
+        const tId = toast.loading("Initiating Sell Transfer to Vault...");
+        
+        if (!window.ethereum) throw new Error("MetaMask not found");
         const provider = new ethers.BrowserProvider(window.ethereum);
         const signer = await provider.getSigner();
-        const cid = Number((await provider.getNetwork()).chainId);
+        const network = await provider.getNetwork();
+        const cid = Number(network.chainId);
+        
         const isNative = activeAsset.id === 'BNB' || activeAsset.id === 'POL';
         
         let tx;
         if (isNative) {
-          tx = await signer.sendTransaction({ to: DEALER_WALLET, value: ethers.parseEther(orderForm.amount) });
+          tx = await signer.sendTransaction({
+            to: DEALER_WALLET,
+            value: ethers.parseEther(orderForm.amount)
+          });
         } else {
           const config = CHAINS[cid];
+          if (!config) throw new Error(`Chain ID ${cid} is not supported.`);
           const contract = new ethers.Contract(config.usdt, ["function transfer(address to, uint256 amount) public returns (bool)"], signer);
           tx = await contract.transfer(DEALER_WALLET, ethers.parseUnits(orderForm.amount, 18));
         }
-        await tx.wait();
+
+        toast.loading("Waiting for Blockchain Confirmation...", { id: tId });
+        const receipt = await tx.wait();
+
+        const newTrade = {
+          id: receipt.hash.slice(0,12),
+          fullHash: receipt.hash,
+          date: new Date().toLocaleString(),
+          asset: activeAsset.id,
+          side: 'sell',
+          amount: orderForm.amount,
+          total: (parseFloat(orderForm.amount) * currentPrice).toLocaleString('id-ID'),
+          chain: cid === 56 ? 'BSC' : 'Polygon'
+        };
+
+        setHistory(prev => [newTrade, ...prev]);
         toast.success("Asset Sent to Vault Successfully", { id: tId });
-      } catch (err: any) {
-        toast.error(err.message, { id: tId });
-      } finally {
-        setIsProcessing(false);
+        setOrderForm(prev => ({ ...prev, amount: '' }));
       }
+    } catch (err: any) {
+      console.error("Execution Error:", err);
+      toast.error(err.message || "Transaction failed");
+    } finally {
+      setIsProcessing(false);
     }
   };
 
