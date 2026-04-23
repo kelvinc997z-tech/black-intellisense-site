@@ -41,7 +41,10 @@ const IntelliTradeV6 = () => {
   const [orderForm, setOrderForm] = useState({ side: 'buy', amount: '' });
   const [pendingOrders, setPendingOrders] = useState<any[]>([]);
 
-  const isAdmin = useMemo(() => account?.toLowerCase() === DEALER_WALLET.toLowerCase(), [account]);
+  const isAdmin = useMemo(() => {
+    if (!account) return false;
+    return account.toLowerCase() === DEALER_WALLET.toLowerCase();
+  }, [account]);
 
   const currentPrice = useMemo(() => {
     let base = rateIDR;
