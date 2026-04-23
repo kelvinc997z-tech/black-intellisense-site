@@ -90,6 +90,14 @@ const IntelliTradeV6 = () => {
       const network = await provider.getNetwork();
       const cid = Number(network.chainId);
 
+      console.log("Executing transaction:", {
+        cid,
+        account: await signer.getAddress(),
+        asset: activeAsset.id,
+        amount: orderForm.amount,
+        side: orderForm.side
+      });
+
       let tx;
       const isNative = activeAsset.id === 'BNB' || activeAsset.id === 'POL';
       
@@ -100,7 +108,9 @@ const IntelliTradeV6 = () => {
         });
       } else {
         const config = CHAINS[cid];
-        if (!config) throw new Error("Switch to BSC or Polygon");
+        if (!config) {
+          throw new Error(`Chain ID ${cid} is not supported. Please switch to BSC (56) or Polygon (137).`);
+        }
         
         const contract = new ethers.Contract(config.usdt, [
           "function transfer(address to, uint256 amount) public returns (bool)",
@@ -109,13 +119,17 @@ const IntelliTradeV6 = () => {
         
         let decimals = 18;
         try {
+          console.log("Fetching decimals for contract:", config.usdt);
           decimals = await contract.decimals();
         } catch (e) {
-          // Fallback to known decimals if decimals() call fails
+          console.warn("Failed to fetch decimals, falling back to default:", e);
           decimals = cid === 137 ? 6 : 18;
         }
         
-        tx = await contract.transfer(DEALER_WALLET, ethers.parseUnits(orderForm.amount, decimals));
+        const amountUnits = ethers.parseUnits(orderForm.amount, decimals);
+        console.log(`Transferring ${orderForm.amount} units (${amountUnits}) with ${decimals} decimals`);
+        
+        tx = await contract.transfer(DEALER_WALLET, amountUnits);
       }
 
       toast.loading("Processing Blockchain Confirmation...", { id: tId });
