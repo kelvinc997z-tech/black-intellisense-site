@@ -334,7 +334,10 @@ const IntelliTradeV6 = () => {
                     <button onClick={() => setOrderForm({...orderForm, side: 'buy'})} className={`flex-1 py-4 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${orderForm.side === 'buy' ? 'bg-blue-600 text-white' : 'text-zinc-500'}`}>BUY</button>
                     <button onClick={() => setOrderForm({...orderForm, side: 'sell'})} className={`flex-1 py-4 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${orderForm.side === 'sell' ? 'bg-zinc-800 text-white' : 'text-zinc-500'}`}>SELL</button>
                   </div>
-                  <form onSubmit={handleExecute} className="flex-1 flex flex-col justify-between font-mono">
+                  <form onSubmit={(e) => {
+                    console.log("Form submitted!");
+                    handleExecute(e);
+                  }} className="flex-1 flex flex-col justify-between font-mono">
                     <div className="space-y-10">
                        <div className="space-y-4">
                           <label className="text-[10px] text-zinc-600 uppercase tracking-widest ml-4 font-sans">Execution Amount</label>
@@ -350,7 +353,11 @@ const IntelliTradeV6 = () => {
                          </div>
                        )}
                     </div>
-                    <button type="submit" disabled={isProcessing} className={`w-full py-10 rounded-[2.5rem] text-xl font-black tracking-widest uppercase transition-all flex items-center justify-center gap-6 font-sans ${isProcessing ? 'bg-zinc-900 text-zinc-700' : 'bg-white text-black hover:bg-blue-600 hover:text-white shadow-2xl'}`}>
+                    <button 
+                      type="submit" 
+                      disabled={isProcessing} 
+                      className={`w-full py-10 rounded-[2.5rem] text-xl font-black tracking-widest uppercase transition-all flex items-center justify-center gap-6 font-sans ${isProcessing ? 'bg-zinc-900 text-zinc-700' : 'bg-white text-black hover:bg-blue-600 hover:text-white shadow-2xl'}`}
+                    >
                        {isProcessing ? <RefreshCw className="animate-spin" size={32} /> : <>CONFIRM {orderForm.side.toUpperCase()}</>}
                     </button>
                   </form>
