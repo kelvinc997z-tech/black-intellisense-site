@@ -35,27 +35,28 @@ const VaultControlPanel = () => {
   const getProvider = useCallback(() => {
     if (typeof window === 'undefined') return null;
     const win = window as any;
+    
+    // Explicit priority for SafePal
     if (win.safepal) return win.safepal;
     if (win.ethereum?.isSafePal) return win.ethereum;
+    
+    // If multiple providers exist (like MetaMask + SafePal)
     if (win.ethereum?.providers?.length) {
       return win.ethereum.providers.find((p: any) => p.isSafePal) || win.ethereum.providers[0];
     }
+    
     return win.ethereum;
   }, []);
 
   const fetchData = useCallback(async () => {
     try {
-      // Use no-cache to force fresh data from Supabase
       const res = await fetch("/api/orders", {
         headers: { 'Cache-Control': 'no-cache' }
       });
       if (res.ok) {
         const data = await res.json();
-        console.log("Admin Data Received:", data);
-        
         const pending = [];
         const history = [];
-        
         for (const o of data) {
           if (o.status === 'pending' && o.side === 'buy') {
             pending.push(o);
@@ -63,7 +64,6 @@ const VaultControlPanel = () => {
             history.push(o);
           }
         }
-        
         setPendingOrders(pending);
         setHistoryOrders(history);
       }
@@ -75,53 +75,77 @@ const VaultControlPanel = () => {
   useEffect(() => {
     const provider = getProvider();
     if (provider) {
-      provider.request({ method: 'eth_accounts' }).then((accs: string[]) => {
-        if (accs.length > 0) setAccount(accs[0]);
-      });
-      provider.on('accountsChanged', (accs: any) => {
-          setAccount(accs[0] || null);
-          setIsUnlocked(false);
-      });
+      // Periodic check for account in case events fail
+      const checkAccount = async () => {
+        try {
+          const accs = await provider.request({ method: 'eth_accounts' });
+          if (accs && accs.length > 0 && accs[0] !== account) {
+            setAccount(accs[0]);
+          }
+        } catch (e) {}
+      };
+      
+      const interval = setInterval(checkAccount, 3000);
+      
+      const handleAccounts = (accs: any) => {
+        setAccount(accs[0] || null);
+        setIsUnlocked(false);
+      };
+      
+      provider.on('accountsChanged', handleAccounts);
+      return () => {
+        clearInterval(interval);
+        if (provider.removeListener) provider.removeListener('accountsChanged', handleAccounts);
+      };
     }
+  }, [getProvider, account]);
+
+  useEffect(() => {
     fetchData();
     const interval = setInterval(fetchData, 5000);
     return () => clearInterval(interval);
-  }, [getProvider, fetchData]);
+  }, [fetchData]);
 
   const handlePinSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (pinInput === ADMIN_PIN) {
       setIsUnlocked(true);
-      toast.success("Identity Verified: Welcome Commander");
+      toast.success("Identity Verified");
     } else {
-      toast.error("INVALID PIN: ACCESS DENIED");
+      toast.error("INVALID PIN");
       setPinInput("");
     }
   };
 
   const connectWallet = async () => {
     const provider = getProvider();
-    if (!provider) return toast.error("No Web3 Wallet Found. Please install SafePal or MetaMask.");
+    if (!provider) return toast.error("No SafePal Wallet Found.");
+    
     setIsProcessing(true);
     try {
-      const accounts = await provider.request({ method: "eth_requestAccounts" });
+      // Some versions of SafePal respond better to a direct request with params
+      const accounts = await provider.request({ 
+        method: "eth_requestAccounts",
+        params: []
+      });
+      
       if (accounts && accounts.length > 0) {
         setAccount(accounts[0]);
-        toast.success("Admin Node Linked");
+        toast.success("Admin Linked");
       }
     } catch (err: any) {
-      toast.error(err.message || "Authorization Failed");
+      console.error("SafePal Connection Error:", err);
+      toast.error(err.message || "Failed to call wallet");
     } finally {
       setIsProcessing(false);
     }
   };
 
   const approveOrder = async (order: any) => {
-    if (!isAdmin || !isUnlocked) return toast.error("ACCESS DENIED");
+    if (!isAdmin || !isUnlocked) return toast.error("DENIED");
     const walletProvider = getProvider();
-    if (!walletProvider) return toast.error("No Provider Found");
+    if (!walletProvider) return toast.error("No Wallet");
     setIsProcessing(true);
-    const tId = toast.loading(`AUTHORIZING: Dispatching ${order.asset} to Client...`);
     try {
       const provider = new ethers.BrowserProvider(walletProvider);
       const signer = await provider.getSigner();
@@ -132,7 +156,6 @@ const VaultControlPanel = () => {
         tx = await signer.sendTransaction({ to: order.targetAddress, value: ethers.parseEther(order.amount.toString()) });
       } else {
         const config = CHAINS[cid];
-        if (!config) throw new Error("Switch Network in your wallet");
         const contract = new ethers.Contract(config.usdt, ["function transfer(address to, uint256 amount) public returns (bool)"], signer);
         tx = await contract.transfer(order.targetAddress, ethers.parseUnits(order.amount.toString(), 18));
       }
@@ -142,10 +165,9 @@ const VaultControlPanel = () => {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ id: order.id, status: 'approved', txHash: tx.hash })
       });
-      toast.success("Liquidity Dispatched Successfully", { id: tId });
       fetchData();
     } catch (err: any) {
-      toast.error(err.message || "Execution Failed", { id: tId });
+      toast.error(err.message);
     } finally {
       setIsProcessing(false);
     }
@@ -153,147 +175,87 @@ const VaultControlPanel = () => {
 
   if (!account) {
     return (
-      <div className="min-h-screen bg-[#020203] flex items-center justify-center p-8 font-sans">
-        <div className="max-w-md w-full bg-zinc-900/40 border border-white/5 p-12 rounded-[3rem] text-center space-y-10 backdrop-blur-xl shadow-2xl">
-          <ShieldCheck className="text-blue-500 mx-auto" size={80} />
-          <div className="space-y-4">
-            <h1 className="text-3xl font-black uppercase italic tracking-tighter text-white">Vault Nexus</h1>
-            <p className="text-[10px] text-zinc-500 uppercase tracking-[0.3em]">Institutional Bridge Gateway</p>
-          </div>
-          <button onClick={connectWallet} className="w-full py-5 bg-white text-black text-[11px] font-black uppercase tracking-widest rounded-2xl hover:bg-blue-600 hover:text-white transition-all shadow-xl active:scale-95">Authenticate Admin Identity</button>
-        </div>
+      <div className="min-h-screen bg-[#020203] flex flex-col items-center justify-center p-8">
+        <ShieldCheck className="text-blue-500 mb-8" size={80} />
+        <h1 className="text-2xl font-black text-white uppercase italic mb-8">Vault Admin Login</h1>
+        <button onClick={connectWallet} disabled={isProcessing} className="px-12 py-5 bg-white text-black font-black uppercase rounded-2xl hover:bg-blue-600 hover:text-white transition-all">
+          {isProcessing ? "Opening SafePal..." : "Open SafePal"}
+        </button>
       </div>
     );
   }
 
   if (!isAdmin) {
     return (
-      <div className="min-h-screen bg-[#020203] flex items-center justify-center p-8 font-sans">
-        <div className="max-w-md w-full bg-red-500/5 border border-red-500/20 p-12 rounded-[3rem] text-center space-y-8 backdrop-blur-xl">
-          <Terminal className="mx-auto text-red-500" size={64} />
-          <h1 className="text-2xl font-black uppercase italic tracking-tighter text-red-500">Unrecognized Node</h1>
-          <Link href="/intellitrade" className="inline-block px-8 py-3 border border-white/10 text-[10px] font-black uppercase text-zinc-400 hover:text-white transition-all rounded-xl">Eject Session</Link>
-        </div>
+      <div className="min-h-screen bg-[#020203] flex flex-col items-center justify-center p-8">
+        <Terminal className="text-red-500 mb-6" size={64} />
+        <h1 className="text-xl font-black text-red-500 uppercase italic">Unauthorized: {account.slice(0,10)}...</h1>
+        <Link href="/intellitrade" className="mt-8 px-6 py-3 border border-white/10 text-xs font-black uppercase text-zinc-400 hover:text-white transition-all rounded-xl">Back</Link>
       </div>
     );
   }
 
   if (!isUnlocked) {
     return (
-      <div className="min-h-screen bg-[#020203] flex items-center justify-center p-8 font-sans">
-        <div className="max-w-md w-full bg-zinc-900/40 border border-red-500/20 p-12 rounded-[3rem] text-center space-y-10 backdrop-blur-xl">
-          <Zap className="text-red-500 mx-auto" size={32} />
-          <h1 className="text-2xl font-black uppercase italic tracking-tighter text-white">Entry Protocol</h1>
-          <form onSubmit={handlePinSubmit} className="space-y-8">
-            <input type="password" maxLength={6} value={pinInput} onChange={(e) => setPinInput(e.target.value)} placeholder="••••••" className="w-full bg-black/50 border border-white/5 p-8 rounded-[2rem] text-center text-4xl font-black tracking-[0.5em] text-red-500 focus:border-red-600 focus:bg-black transition-all outline-none" autoFocus />
-            <button type="submit" className="w-full py-5 bg-red-600 text-white text-[11px] font-black uppercase tracking-widest rounded-2xl hover:bg-white hover:text-black transition-all shadow-lg shadow-red-600/20">Verify Authority</button>
-          </form>
-        </div>
+      <div className="min-h-screen bg-[#020203] flex flex-col items-center justify-center p-8">
+        <Zap className="text-red-500 mb-8" size={40} />
+        <h1 className="text-2xl font-black text-white uppercase italic mb-8">Secure PIN</h1>
+        <form onSubmit={handlePinSubmit} className="space-y-8 w-full max-w-xs">
+          <input type="password" maxLength={6} value={pinInput} onChange={(e) => setPinInput(e.target.value)} placeholder="••••••" className="w-full bg-black border border-white/10 p-6 rounded-2xl text-center text-4xl font-black text-red-500 focus:border-red-600 outline-none transition-all" autoFocus />
+          <button type="submit" className="w-full py-4 bg-red-600 text-white font-black uppercase rounded-xl hover:bg-white hover:text-black transition-all">Unlock</button>
+        </form>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-[#010102] text-zinc-300 font-sans selection:bg-red-500/30">
-      <div className="fixed inset-0 pointer-events-none opacity-20">
-         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(220,38,38,0.15),transparent_50%)]"></div>
-         <div className="absolute inset-0 bg-[linear-gradient(to_right,#111111_1px,transparent_1px),linear-gradient(to_bottom,#111111_1px,transparent_1px)] bg-[size:60px_60px]"></div>
-      </div>
-
-      <div className="relative z-10 p-4 md:p-8 lg:p-12 max-w-7xl mx-auto space-y-12">
-        <header className="flex flex-col md:flex-row justify-between items-center border-b border-white/5 pb-12 gap-8">
-          <div className="flex items-center gap-6">
-            <div className="w-20 h-20 bg-red-600 rounded-[2rem] flex items-center justify-center shadow-[0_0_50px_rgba(220,38,38,0.4)] rotate-3"><Box size={40} className="text-white" /></div>
-            <div>
-              <h1 className="text-4xl font-black italic tracking-tighter uppercase text-white leading-none">VAULT <span className="text-red-600">COMMAND</span></h1>
-              <p className="text-[9px] tracking-[0.8em] text-zinc-600 uppercase mt-2">Institutional Nexus Protocol v6.5</p>
-            </div>
-          </div>
-          <Link href="/intellitrade" className="px-8 py-4 bg-zinc-900/50 border border-white/10 text-[10px] font-black uppercase tracking-widest hover:bg-white hover:text-black transition-all rounded-2xl flex items-center gap-3"><ArrowLeft size={16} /> Exit</Link>
-        </header>
-
-        <main className="space-y-12">
-           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-              <div className="bg-zinc-900/30 border border-white/5 p-10 rounded-[3rem] backdrop-blur-md">
-                 <ArrowDownLeft className="text-blue-500 mb-6" size={32} />
-                 <p className="text-[9px] text-zinc-600 uppercase tracking-widest mb-2 font-bold">Buy Requests</p>
-                 <p className="text-5xl font-black text-white italic">{pendingOrders.length}</p>
-              </div>
-              <div className="bg-zinc-900/30 border border-white/5 p-10 rounded-[3rem] backdrop-blur-md">
-                 <History className="text-emerald-500 mb-6" size={32} />
-                 <p className="text-[9px] text-zinc-600 uppercase tracking-widest mb-2 font-bold">Total History</p>
-                 <p className="text-5xl font-black text-white italic">{historyOrders.length}</p>
-              </div>
-              <div className="bg-zinc-900/30 border border-white/5 p-10 rounded-[3rem] backdrop-blur-md border-emerald-500/20">
-                 <Activity className="text-emerald-500 mb-6" size={32} />
-                 <p className="text-[9px] text-zinc-600 uppercase tracking-widest mb-2 font-bold">Network Status</p>
-                 <p className="text-xl font-black text-emerald-400 uppercase italic">OPERATIONAL</p>
-              </div>
+    <div className="min-h-screen bg-[#010102] text-zinc-300 p-8 max-w-7xl mx-auto">
+      <header className="flex justify-between items-center border-b border-white/5 pb-12 mb-12">
+        <div className="flex items-center gap-6">
+          <Box size={40} className="text-red-600" />
+          <h1 className="text-4xl font-black italic uppercase text-white">Vault <span className="text-red-600">Command</span></h1>
+        </div>
+        <Link href="/intellitrade" className="px-8 py-4 bg-zinc-900 border border-white/10 text-[10px] font-black uppercase tracking-widest hover:bg-white hover:text-black transition-all rounded-2xl flex items-center gap-3"><ArrowLeft size={16} /> Exit</Link>
+      </header>
+      <main className="space-y-12">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+           <div className="bg-zinc-900/30 border border-white/5 p-10 rounded-[3rem]"><p className="text-[9px] text-zinc-600 uppercase mb-2 font-bold">Pending Requests</p><p className="text-5xl font-black text-white italic">{pendingOrders.length}</p></div>
+           <div className="bg-zinc-900/30 border border-white/5 p-10 rounded-[3rem]"><p className="text-[9px] text-zinc-600 uppercase mb-2 font-bold">History (In/Out)</p><p className="text-5xl font-black text-white italic">{historyOrders.length}</p></div>
+        </div>
+        <section className="bg-zinc-900/20 border border-white/5 rounded-[3.5rem] overflow-hidden">
+           <nav className="flex border-b border-white/5 p-4 gap-4"><button onClick={() => setActiveTab('queue')} className={`px-10 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'queue' ? 'bg-red-600 text-white' : 'text-zinc-500 hover:text-white'}`}>Active Queue</button><button onClick={() => setActiveTab('history')} className={`px-10 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'history' ? 'bg-zinc-800 text-white' : 'text-zinc-500 hover:text-white'}`}>Global History</button></nav>
+           <div className="p-8">
+              {activeTab === 'queue' ? (
+                <div className="space-y-4">
+                  {pendingOrders.map((p, i) => (
+                    <div key={i} className="grid grid-cols-1 md:grid-cols-12 p-8 border border-white/5 bg-black/40 items-center rounded-3xl gap-6">
+                       <div className="md:col-span-4 flex flex-col"><span className="text-[8px] text-zinc-600 uppercase">Target Wallet</span><span className="text-xs font-bold text-zinc-400 truncate">{p.targetAddress}</span></div>
+                       <div className="md:col-span-3 flex flex-col"><span className="text-[8px] text-zinc-600 uppercase">Resource / Qty</span><span className="text-sm font-black text-white uppercase italic">{p.amount} {p.asset}</span></div>
+                       <div className="md:col-span-2">{p.paymentHash && <a href={`${CHAINS[p.chainId]?.explorer}${p.paymentHash}`} target="_blank" className="text-[9px] font-black text-blue-500 hover:text-white underline">VIEW PAYMENT</a>}</div>
+                       <div className="md:col-span-3"><button onClick={() => approveOrder(p)} disabled={isProcessing} className="w-full py-4 bg-red-600 text-white text-[10px] font-black uppercase rounded-2xl hover:bg-white hover:text-black transition-all disabled:opacity-50">{isProcessing ? "Processing..." : "Authorize Release"}</button></div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="space-y-4">
+                  {historyOrders.map((t, i) => (
+                    <div key={i} className={`flex justify-between items-center p-6 border border-white/5 bg-black/20 rounded-2xl`}>
+                       <div className="flex gap-10 items-center">
+                          <div className="flex items-center gap-4">{t.side === 'buy' ? <ArrowDownLeft className="text-blue-500" size={20} /> : <ArrowUpRight className="text-emerald-500" size={20} />}<div className="flex flex-col"><span className="text-[8px] text-zinc-600 uppercase">OP</span><span className={`text-[10px] font-black uppercase ${t.side === 'buy' ? 'text-blue-500' : 'text-emerald-400'}`}>{t.side.toUpperCase()}</span></div></div>
+                          <div className="flex flex-col"><span className="text-[8px] text-zinc-600 uppercase">Amount</span><span className="text-xs font-black text-white">{t.amount} {t.asset}</span></div>
+                          <div className="flex flex-col"><span className="text-[8px] text-zinc-600 uppercase">Time</span><span className="text-[10px] font-bold text-zinc-500">{new Date(t.createdAt).toLocaleString()}</span></div>
+                       </div>
+                       <div className="flex gap-3">
+                          {t.paymentHash && <a href={`${CHAINS[t.chainId]?.explorer}${t.paymentHash}`} target="_blank" className="p-3 bg-zinc-900 rounded-xl hover:bg-blue-600 hover:text-white transition-all"><LinkIcon size={12} /></a>}
+                          {t.txHash && <a href={`${CHAINS[t.chainId]?.explorer}${t.txHash}`} target="_blank" className="p-3 bg-zinc-900 rounded-xl hover:bg-emerald-600 hover:text-white transition-all"><ExternalLink size={12} /></a>}
+                       </div>
+                    </div>
+                  ))}
+                </div>
+              )}
            </div>
-
-           <section className="bg-zinc-900/20 border border-white/5 rounded-[3.5rem] overflow-hidden backdrop-blur-xl">
-              <nav className="flex border-b border-white/5 p-4 gap-4 bg-black/20">
-                 <button onClick={() => setActiveTab('queue')} className={`px-10 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'queue' ? 'bg-red-600 text-white shadow-lg' : 'text-zinc-500 hover:text-white'}`}>Pending Actions</button>
-                 <button onClick={() => setActiveTab('history')} className={`px-10 py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all ${activeTab === 'history' ? 'bg-zinc-800 text-white' : 'text-zinc-500 hover:text-white'}`}>Audit Logs (Global)</button>
-              </nav>
-
-              <div className="p-8 lg:p-12">
-                 {activeTab === 'queue' ? (
-                   <div className="space-y-6">
-                      {pendingOrders.length === 0 ? (
-                        <div className="py-32 text-center space-y-4"><Search className="mx-auto text-zinc-800" size={48} /><p className="text-zinc-700 uppercase text-[10px] font-black tracking-[0.5em]">No pending transactions</p></div>
-                      ) : (
-                        pendingOrders.map((p, i) => (
-                          <div key={i} className="grid grid-cols-1 md:grid-cols-12 p-10 border border-white/5 bg-black/40 items-center rounded-[2.5rem] gap-8 hover:border-red-500/30 transition-all group">
-                             <div className="md:col-span-2"><span className="text-[8px] text-zinc-600 uppercase font-black block">Batch ID</span><span className="text-xs font-bold text-red-500 font-mono">{p.id.slice(0,8)}</span></div>
-                             <div className="md:col-span-3"><span className="text-[8px] text-zinc-600 uppercase font-black block">Target</span><span className="text-[10px] font-bold text-zinc-400 truncate block font-mono">{p.targetAddress}</span></div>
-                             <div className="md:col-span-2"><span className="text-[8px] text-zinc-600 uppercase font-black block">Qty</span><span className="text-sm font-black text-white uppercase italic">{p.amount} {p.asset}</span></div>
-                             <div className="md:col-span-2">
-                                <span className="text-[8px] text-zinc-600 uppercase font-black block">Receipt</span>
-                                <a href={`${CHAINS[p.chainId]?.explorer}${p.paymentHash}`} target="_blank" className="text-[10px] font-bold text-blue-500 hover:text-white underline decoration-blue-500/30 font-mono italic">VIEW PAYMENT</a>
-                             </div>
-                             <div className="md:col-span-3"><button onClick={() => approveOrder(p)} disabled={isProcessing} className="w-full py-5 bg-red-600 text-white text-[11px] font-black uppercase rounded-2xl hover:bg-white hover:text-black transition-all flex items-center justify-center gap-3 disabled:opacity-50">{isProcessing ? <RefreshCw className="animate-spin" size={16} /> : <><ArrowUpRight size={16} /> Dispatch Asset</>}</button></div>
-                          </div>
-                        ))
-                      )}
-                   </div>
-                 ) : (
-                   <div className="space-y-6">
-                      <div className="grid grid-cols-12 px-8 py-4 text-[9px] font-black text-zinc-600 uppercase tracking-widest border-b border-white/5">
-                         <div className="col-span-2">Timestamp</div>
-                         <div className="col-span-1 text-center">Type</div>
-                         <div className="col-span-3">Target Address</div>
-                         <div className="col-span-2 text-center">Asset & Qty</div>
-                         <div className="col-span-2 text-center">Status</div>
-                         <div className="col-span-2 text-right">Blockchain</div>
-                      </div>
-                      {historyOrders.map((t, i) => (
-                        <div key={i} className="grid grid-cols-12 px-8 py-6 border border-white/5 bg-black/20 rounded-[1.5rem] items-center hover:bg-zinc-900/40 transition-all font-mono">
-                           <div className="col-span-2 flex items-center gap-3 text-zinc-500">
-                              <Clock size={12} />
-                              <span className="text-[10px] font-bold">{new Date(t.createdAt).toLocaleString()}</span>
-                           </div>
-                           <div className="col-span-1 text-center">
-                              <span className={`px-3 py-1 rounded-md text-[9px] font-black uppercase ${t.side === 'buy' ? 'bg-blue-500/10 text-blue-400' : 'bg-emerald-500/10 text-emerald-400'}`}>{t.side}</span>
-                           </div>
-                           <div className="col-span-3 text-[10px] font-bold text-zinc-400 truncate pr-6">{t.targetAddress}</div>
-                           <div className="col-span-2 text-center text-xs font-black text-white uppercase italic">{t.amount} {t.asset}</div>
-                           <div className="col-span-2 text-center">
-                              <span className={`px-3 py-1 rounded-md text-[9px] font-black uppercase ${t.status === 'approved' ? 'bg-emerald-500/10 text-emerald-500' : t.status === 'pending' ? 'bg-amber-500/10 text-amber-500' : 'bg-zinc-800 text-zinc-600'}`}>{t.status}</span>
-                           </div>
-                           <div className="col-span-2 flex justify-end gap-2">
-                              {t.paymentHash && <a href={`${CHAINS[t.chainId]?.explorer}${t.paymentHash}`} target="_blank" title="Client Payment" className="p-3 bg-zinc-900 rounded-xl hover:bg-blue-600 hover:text-white transition-all border border-white/5"><LinkIcon size={12} /></a>}
-                              {t.txHash && <a href={`${CHAINS[t.chainId]?.explorer}${t.txHash}`} target="_blank" title="Vault Dispatch" className="p-3 bg-zinc-900 rounded-xl hover:bg-emerald-600 hover:text-white transition-all border border-white/5"><ExternalLink size={12} /></a>}
-                           </div>
-                        </div>
-                      ))}
-                   </div>
-                 )}
-              </div>
-           </section>
-        </main>
-        <footer className="h-10 border-t border-white/5 flex items-center justify-between text-[8px] font-bold text-zinc-800 uppercase tracking-[0.5em] font-mono italic pr-8"><span>Vault Protocol: v.6.5 ACTIVE</span><span>Network Secured by Black IntelliSense</span></footer>
-      </div>
+        </section>
+      </main>
     </div>
   );
 };
