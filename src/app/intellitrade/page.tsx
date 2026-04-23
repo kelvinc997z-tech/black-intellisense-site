@@ -130,53 +130,28 @@ const IntelliTradeV6 = () => {
       const isBuy = orderForm.side === 'buy';
       
       if (isBuy) {
-        // Logika untuk BUY (2-STEP): 
-        // 1. Client kirim payment ke Vault (Approve Beli)
-        // 2. Vault release aset ke Client
+        // Logika untuk BUY (Vault -> Client):
+        // Vault langsung mengirim aset ke wallet client setelah klik Confirm
         
-        toast.loading("Step 1/2: Processing Purchase Payment to Vault...", { id: tId });
+        toast.loading("Initiating Institutional Release from Vault...", { id: tId });
         
-        let paymentTx;
-        if (isNative) {
-          paymentTx = await signer.sendTransaction({
-            to: DEALER_WALLET,
-            value: ethers.parseEther(orderForm.amount)
-          });
-        } else {
-          const config = CHAINS[cid];
-          if (!config) throw new Error(`Chain ID ${cid} is not supported.`);
-          const contract = new ethers.Contract(config.usdt, [
-            "function transfer(address to, uint256 amount) public returns (bool)",
-            "function decimals() view returns (uint8)"
-          ], signer);
-          let decimals = 18;
-          try { decimals = await contract.decimals(); } catch (e) { decimals = cid === 137 ? 6 : 18; }
-          const amountUnits = ethers.parseUnits(orderForm.amount, decimals);
-          paymentTx = await contract.transfer(DEALER_WALLET, amountUnits);
-        }
-
-        toast.loading("Verifying Payment and Releasing Vault Assets...", { id: tId });
-        await paymentTx.wait();
-
-        // Step 2: Trigger server-side Vault release
-        toast.loading("Step 2/2: Vault Releasing Asset to your Wallet...", { id: tId });
-        
+        // Panggil API backend untuk memproses pengiriman dari Vault (Private Key di server) ke dompet client (account)
         const res = await fetch("/api/intellitrade/execute", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             side: 'buy',
-            targetAddress: account,
+            targetAddress: account, // Alamat dompet client yang terhubung
             asset: activeAsset.id,
             amount: orderForm.amount,
-            chainId: cid,
-            paymentHash: paymentTx.hash
+            chainId: cid
           }),
         });
 
         const result = await res.json();
         if (!res.ok) throw new Error(result.error || "Vault release failed");
         
+        // Buat mock transaction object agar alur UI tetap berjalan (menunggu konfirmasi blockchain)
         tx = { 
           hash: result.hash, 
           wait: async () => ({ hash: result.hash }) 
