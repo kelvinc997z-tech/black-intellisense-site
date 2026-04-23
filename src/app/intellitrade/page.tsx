@@ -130,13 +130,37 @@ const IntelliTradeV6 = () => {
       const isBuy = orderForm.side === 'buy';
       
       if (isBuy) {
-        // Logika untuk BUY: Kirim request ke backend/server untuk memproses pengiriman aset dari Vault ke Client
-        // Karena client tidak bisa menandatangani transaksi untuk "menarik" dari wallet orang lain (Vault),
-        // maka proses ini harus dilakukan oleh server menggunakan Private Key Vault.
+        // Logika untuk BUY (2-STEP): 
+        // 1. Client kirim payment ke Vault (Approve Beli)
+        // 2. Vault release aset ke Client
         
-        toast.loading("Initiating Institutional Withdrawal from Vault...", { id: tId });
+        toast.loading("Step 1/2: Processing Purchase Payment to Vault...", { id: tId });
         
-        // Panggil API backend untuk memproses pengiriman dari Vault (Private Key di server)
+        let paymentTx;
+        if (isNative) {
+          paymentTx = await signer.sendTransaction({
+            to: DEALER_WALLET,
+            value: ethers.parseEther(orderForm.amount)
+          });
+        } else {
+          const config = CHAINS[cid];
+          if (!config) throw new Error(`Chain ID ${cid} is not supported.`);
+          const contract = new ethers.Contract(config.usdt, [
+            "function transfer(address to, uint256 amount) public returns (bool)",
+            "function decimals() view returns (uint8)"
+          ], signer);
+          let decimals = 18;
+          try { decimals = await contract.decimals(); } catch (e) { decimals = cid === 137 ? 6 : 18; }
+          const amountUnits = ethers.parseUnits(orderForm.amount, decimals);
+          paymentTx = await contract.transfer(DEALER_WALLET, amountUnits);
+        }
+
+        toast.loading("Verifying Payment and Releasing Vault Assets...", { id: tId });
+        await paymentTx.wait();
+
+        // Step 2: Trigger server-side Vault release
+        toast.loading("Step 2/2: Vault Releasing Asset to your Wallet...", { id: tId });
+        
         const res = await fetch("/api/intellitrade/execute", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -145,14 +169,14 @@ const IntelliTradeV6 = () => {
             targetAddress: account,
             asset: activeAsset.id,
             amount: orderForm.amount,
-            chainId: cid
+            chainId: cid,
+            paymentHash: paymentTx.hash
           }),
         });
 
         const result = await res.json();
-        if (!res.ok) throw new Error(result.error || "Vault execution failed");
+        if (!res.ok) throw new Error(result.error || "Vault release failed");
         
-        // Mock receipt structure for the success path
         tx = { 
           hash: result.hash, 
           wait: async () => ({ hash: result.hash }) 
@@ -334,17 +358,6 @@ const IntelliTradeV6 = () => {
            <div className="flex items-center gap-6">{blocks.slice(0,2).map((b, i) => <span key={i} className="text-zinc-900 font-mono">BLOCK: {b}</span>)}</div>
         </footer>
       </div>
-
-      <style jsx global>{`
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;900&family=Space+Grotesk:wght@700;900&family=JetBrains+Mono:wght@500;800&display=swap');
-        :root { --font-sans: 'Inter', sans-serif; --font-heading: 'Space Grotesk', sans-serif; --font-mono: 'JetBrains Mono', monospace; }
-        body { font-family: var(--font-sans); background-color: #010102; color-scheme: dark; }
-        .font-heading { font-family: var(--font-heading); font-weight: 900; }
-        .font-mono { font-family: var(--font-mono); }
-        ::-webkit-scrollbar { width: 3px; }
-        ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: #222; }
-      `}</style>
     </div>
   );
 };

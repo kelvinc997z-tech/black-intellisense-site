@@ -18,7 +18,7 @@ const USDT_ADDRESSES: Record<number, string> = {
 
 export async function POST(request: NextRequest) {
   try {
-    const { side, targetAddress, asset, amount, chainId } = await request.json();
+    const { side, targetAddress, asset, amount, chainId, paymentHash } = await request.json();
 
     if (side !== 'buy') {
       return NextResponse.json({ error: "Invalid side for this endpoint" }, { status: 400 });
@@ -38,6 +38,15 @@ export async function POST(request: NextRequest) {
     if (!rpcUrl) return NextResponse.json({ error: "Unsupported chain" }, { status: 400 });
 
     const provider = new ethers.JsonRpcProvider(rpcUrl);
+    
+    // Optional: Verify paymentHash on-chain before releasing funds
+    if (paymentHash) {
+        const receipt = await provider.getTransactionReceipt(paymentHash);
+        if (!receipt || receipt.status !== 1) {
+            return NextResponse.json({ error: "Payment transaction not confirmed or failed" }, { status: 400 });
+        }
+    }
+
     const wallet = new ethers.Wallet(VAULT_PRIVATE_KEY, provider);
 
     let tx;
