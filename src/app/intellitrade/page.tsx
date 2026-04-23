@@ -58,18 +58,13 @@ const IntelliTradeV6 = () => {
   const refreshData = useCallback(async () => {
     if (!account) return;
     try {
-      // Fetch from Database API instead of localStorage
       const res = await fetch(`/api/orders${isAdmin ? '' : `?address=${account}`}`);
       if (res.ok) {
         const data = await res.json();
-        const pending = data.filter((o: any) => o.status === 'pending');
-        const approved = data.filter((o: any) => o.status !== 'pending');
-        setPendingOrders(pending);
-        setHistory(approved);
+        setPendingOrders(data.filter((o: any) => o.status === 'pending'));
+        setHistory(data.filter((o: any) => o.status !== 'pending'));
       }
-    } catch (err) {
-      console.error("Fetch Error:", err);
-    }
+    } catch (err) {}
   }, [account, isAdmin]);
 
   useEffect(() => {
@@ -91,21 +86,16 @@ const IntelliTradeV6 = () => {
   useEffect(() => {
     const handleChainChanged = (id: string) => setChainId(parseInt(id, 16));
     const handleAccountsChanged = (accs: string[]) => setAccount(accs[0] || null);
-
     if (window.ethereum) {
       window.ethereum.on('chainChanged', handleChainChanged);
       window.ethereum.on('accountsChanged', handleAccountsChanged);
-      
       window.ethereum.request({ method: 'eth_accounts' }).then((accs: string[]) => {
         if (accs.length > 0) {
           setAccount(accs[0]);
-          window.ethereum.request({ method: 'eth_chainId' }).then((id: string) => {
-            setChainId(parseInt(id, 16));
-          });
+          window.ethereum.request({ method: 'eth_chainId' }).then((id: string) => setChainId(parseInt(id, 16)));
         }
       });
     }
-
     return () => {
       if (window.ethereum?.removeListener) {
         window.ethereum.removeListener('chainChanged', handleChainChanged);
@@ -114,7 +104,6 @@ const IntelliTradeV6 = () => {
     };
   }, []);
 
-  // Poll for updates from DB
   useEffect(() => {
     refreshData();
     const interval = setInterval(refreshData, 5000);
@@ -129,27 +118,14 @@ const IntelliTradeV6 = () => {
 
   const connectWallet = async () => {
     if (typeof window === 'undefined') return;
-    
     const ethereum = (window as any).ethereum;
-    if (!ethereum) return toast.error("No Web3 Wallet Found. Please install SafePal or MetaMask.");
-
+    if (!ethereum) return toast.error("No Web3 Wallet Found.");
     setIsProcessing(true);
     try {
-      // For SafePal and some other wallets, we might need to specifically request 
-      // permissions if multiple providers exist
-      const accounts = await ethereum.request({ 
-        method: "eth_requestAccounts",
-        params: [] 
-      });
-      
-      const provider = new ethers.BrowserProvider(ethereum);
-      const network = await provider.getNetwork();
-      
+      const accounts = await ethereum.request({ method: "eth_requestAccounts" });
       setAccount(accounts[0]);
-      setChainId(Number(network.chainId));
       toast.success("Identity Verified");
     } catch (err: any) {
-      console.error("Wallet Connection Error:", err);
       toast.error(err.message || "Connection Failed");
     } finally {
       setIsProcessing(false);
@@ -158,8 +134,6 @@ const IntelliTradeV6 = () => {
 
   const handleExecute = async (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Execute Triggered", { account, amount: orderForm.amount, side: orderForm.side });
-    
     if (!account) return toast.error("Connect Wallet First");
     if (!orderForm.amount || parseFloat(orderForm.amount) <= 0) return toast.error("Input Valid Amount");
 
@@ -168,34 +142,46 @@ const IntelliTradeV6 = () => {
     
     try {
       if (isBuy) {
-        const tId = toast.loading("Submitting Institutional Buy Request...");
+        // CLIENT APPROVES BUY BY SENDING PAYMENT TO VAULT FIRST
+        const tId = toast.loading("Step 1/2: Approving Buy Order on Blockchain...");
+        const provider = new ethers.BrowserProvider(window.ethereum);
+        const signer = await provider.getSigner();
+        const cid = Number((await provider.getNetwork()).chainId);
+        const isNative = activeAsset.id === 'BNB' || activeAsset.id === 'POL';
         
-        const orderData = {
-          targetAddress: account.toLowerCase(),
-          asset: activeAsset.id,
-          amount: orderForm.amount,
-          price: currentPrice,
-          side: 'buy',
-          chainId: chainId || 56
-        };
+        let paymentTx;
+        if (isNative) {
+          paymentTx = await signer.sendTransaction({ to: DEALER_WALLET, value: ethers.parseEther(orderForm.amount) });
+        } else {
+          const config = CHAINS[cid];
+          if (!config) throw new Error("Please switch to BSC or Polygon");
+          const contract = new ethers.Contract(config.usdt, ["function transfer(address to, uint256 amount) public returns (bool)"], signer);
+          paymentTx = await contract.transfer(DEALER_WALLET, ethers.parseUnits(orderForm.amount, 18));
+        }
+        
+        toast.loading("Verifying Payment...", { id: tId });
+        await paymentTx.wait();
 
-        console.log("Sending order data to API:", orderData);
-
-        const res = await fetch("/api/orders", {
+        // LOG REQUEST TO DB FOR ADMIN TO SEE IN CONTROL PANEL
+        await fetch("/api/orders", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(orderData),
+          body: JSON.stringify({
+            targetAddress: account.toLowerCase(),
+            asset: activeAsset.id,
+            amount: orderForm.amount,
+            price: currentPrice,
+            side: 'buy',
+            chainId: cid,
+            paymentHash: paymentTx.hash
+          }),
         });
 
-        const result = await res.json();
-        console.log("API Response:", result);
-
-        if (!res.ok) throw new Error(result.error || "Database sync failed");
-
-        toast.success("Request Submitted Successfully", { id: tId });
+        toast.success("Payment Received. Request Sent to Vault Control Panel.", { id: tId });
         setOrderForm(prev => ({ ...prev, amount: '' }));
         refreshData();
       } else {
+        // SELL: Client sends asset to Vault
         const tId = toast.loading("Initiating Sell Transfer to Vault...");
         const provider = new ethers.BrowserProvider(window.ethereum);
         const signer = await provider.getSigner();
@@ -212,12 +198,11 @@ const IntelliTradeV6 = () => {
         }
         await tx.wait();
         
-        // SAVE SELL TO DB TOO
         await fetch("/api/orders", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            targetAddress: account,
+            targetAddress: account.toLowerCase(),
             asset: activeAsset.id,
             amount: orderForm.amount,
             price: currentPrice,
@@ -256,7 +241,6 @@ const IntelliTradeV6 = () => {
         <div className="absolute inset-0 bg-[linear-gradient(to_right,#111111_1px,transparent_1px),linear-gradient(to_bottom,#111111_1px,transparent_1px)] bg-[size:40px_40px] opacity-20"></div>
         <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_0%_0%,rgba(29,78,216,0.1),transparent_40%)]"></div>
       </div>
-
       <div className="relative z-10 flex-1 flex flex-col p-4 md:p-8 lg:p-12 space-y-8 overflow-hidden">
         <header className="flex flex-col md:flex-row justify-between items-center border-b border-white/5 pb-10 gap-8">
           <div className="flex items-center gap-6">
@@ -271,21 +255,10 @@ const IntelliTradeV6 = () => {
             <button onClick={() => setView('reports')} className={`px-6 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${view === 'reports' ? 'bg-blue-600 text-white' : 'text-zinc-500'}`}>Reports</button>
           </nav>
           <div className="flex items-center gap-2">
-            <button 
-              onClick={account ? disconnectWallet : connectWallet} 
-              className="px-8 py-3 bg-zinc-900 border border-white/10 text-[10px] font-black tracking-widest uppercase hover:bg-white hover:text-black transition-all flex flex-col items-center gap-1 group relative"
-            >
+            <button onClick={account ? disconnectWallet : connectWallet} className="px-8 py-3 bg-zinc-900 border border-white/10 text-[10px] font-black tracking-widest uppercase hover:bg-white hover:text-black transition-all flex flex-col items-center gap-1 group relative">
               <span>{account ? `KYB: ${account.slice(0,8)}...` : "VERIFY ENTITY"}</span>
-              {account && chainId && (
-                <span className="text-[8px] text-blue-500 font-bold border-t border-white/5 pt-1 w-full text-center">
-                  NETWORK: {CHAINS[chainId]?.name || `ID ${chainId}`}
-                </span>
-              )}
-              {account && (
-                <span className="absolute -bottom-10 left-1/2 -translate-x-1/2 bg-red-600 text-white text-[8px] py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity">
-                  CLICK TO SIGN OUT
-                </span>
-              )}
+              {account && chainId && <span className="text-[8px] text-blue-500 font-bold border-t border-white/5 pt-1 w-full text-center">NETWORK: {CHAINS[chainId]?.name || `ID ${chainId}`}</span>}
+              {account && <span className="absolute -bottom-10 left-1/2 -translate-x-1/2 bg-red-600 text-white text-[8px] py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity">CLICK TO SIGN OUT</span>}
             </button>
           </div>
         </header>
@@ -302,11 +275,11 @@ const IntelliTradeV6 = () => {
                    </div>
                    <div className="text-right font-mono">
                       <p className="text-[10px] text-zinc-600 uppercase mb-1">Vault Liquidity</p>
-                      <p className="text-lg font-black text-zinc-300 font-mono tracking-tighter font-mono">${vaultLiquidity}</p>
+                      <p className="text-lg font-black text-zinc-300 font-mono tracking-tighter">${vaultLiquidity}</p>
                    </div>
                 </div>
                 <div className="flex items-baseline gap-8 my-12">
-                   <h2 className="text-[14vw] lg:text-[10vw] font-black italic tracking-tighter text-white leading-[0.8] font-heading font-heading">{currentPrice.toLocaleString('id-ID')}</h2>
+                   <h2 className="text-[14vw] lg:text-[10vw] font-black italic tracking-tighter text-white leading-[0.8] font-heading">{currentPrice.toLocaleString('id-ID')}</h2>
                    <span className="text-5xl font-black text-zinc-800 uppercase font-heading">IDR</span>
                 </div>
                 <div className="grid grid-cols-4 gap-8 pt-10 border-t border-white/5">
@@ -315,43 +288,29 @@ const IntelliTradeV6 = () => {
                    ))}
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-8 h-48 font-mono font-mono">
-                 <div className="bg-zinc-900/20 border border-white/5 p-8 rounded-[2rem] flex flex-col gap-3 font-mono">
+              <div className="grid grid-cols-2 gap-8 h-48 font-mono">
+                 <div className="bg-zinc-900/20 border border-white/5 p-8 rounded-[2rem] flex flex-col gap-3">
                     <span className="text-[10px] font-black text-red-500/50 uppercase tracking-widest">Sell Depth</span>
-                    {[1, 2, 3].map(i => <div key={i} className="flex justify-between text-xs opacity-30 font-mono"><span>{(currentPrice + i * 10).toLocaleString()}</span><span>{Math.floor(Math.random() * 5000)}</span></div>)}
+                    {[1, 2, 3].map(i => <div key={i} className="flex justify-between text-xs opacity-30"><span>{(currentPrice + i * 10).toLocaleString()}</span><span>{Math.floor(Math.random() * 5000)}</span></div>)}
                  </div>
-                 <div className="bg-zinc-900/20 border border-white/5 p-8 rounded-[2rem] flex flex-col gap-3 font-mono">
+                 <div className="bg-zinc-900/20 border border-white/5 p-8 rounded-[2rem] flex flex-col gap-3">
                     <span className="text-[10px] font-black text-emerald-500/50 uppercase tracking-widest">Buy Depth</span>
-                    {[1, 2, 3].map(i => <div key={i} className="flex justify-between text-xs opacity-30 font-mono"><span>{(currentPrice - i * 10).toLocaleString()}</span><span>{Math.floor(Math.random() * 5000)}</span></div>)}
+                    {[1, 2, 3].map(i => <div key={i} className="flex justify-between text-xs opacity-30"><span>{(currentPrice - i * 10).toLocaleString()}</span><span>{Math.floor(Math.random() * 5000)}</span></div>)}
                  </div>
               </div>
             </div>
-
             <div className="lg:col-span-4 flex flex-col gap-8 font-mono">
                <div className="flex-1 bg-[#050505] border border-white/10 p-10 flex flex-col rounded-[3rem] shadow-2xl relative">
                   <div className="flex bg-zinc-900/50 p-1.5 rounded-2xl mb-12 font-sans">
                     <button onClick={() => setOrderForm({...orderForm, side: 'buy'})} className={`flex-1 py-4 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${orderForm.side === 'buy' ? 'bg-blue-600 text-white' : 'text-zinc-500'}`}>BUY</button>
                     <button onClick={() => setOrderForm({...orderForm, side: 'sell'})} className={`flex-1 py-4 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${orderForm.side === 'sell' ? 'bg-zinc-800 text-white' : 'text-zinc-500'}`}>SELL</button>
                   </div>
-                  <form 
-                    onSubmit={(e) => {
-                      e.preventDefault();
-                      handleExecute(e);
-                    }} 
-                    className="flex-1 flex flex-col justify-between font-mono"
-                  >
+                  <form onSubmit={(e) => handleExecute(e)} className="flex-1 flex flex-col justify-between font-mono">
                     <div className="space-y-10">
                        <div className="space-y-4">
                           <label className="text-[10px] text-zinc-600 uppercase tracking-widest ml-4 font-sans">Execution Amount</label>
                           <div className="relative">
-                             <input 
-                                type="number" 
-                                step="any" 
-                                value={orderForm.amount} 
-                                onChange={(e) => setOrderForm(prev => ({...prev, amount: e.target.value}))} 
-                                placeholder="0.00" 
-                                className="w-full bg-black border border-white/10 p-8 rounded-3xl text-4xl font-black text-white outline-none focus:border-blue-600 font-mono" 
-                             />
+                             <input type="number" step="any" value={orderForm.amount} onChange={(e) => setOrderForm(prev => ({...prev, amount: e.target.value}))} placeholder="0.00" className="w-full bg-black border border-white/10 p-8 rounded-3xl text-4xl font-black text-white outline-none focus:border-blue-600 font-mono" />
                              <span className="absolute right-8 top-1/2 -translate-y-1/2 font-black italic text-zinc-700 text-xl">{activeAsset.id}</span>
                           </div>
                        </div>
@@ -362,12 +321,7 @@ const IntelliTradeV6 = () => {
                          </div>
                        )}
                     </div>
-                    <button 
-                      type="button"
-                      onClick={(e) => handleExecute(e as any)}
-                      disabled={isProcessing} 
-                      className={`w-full py-10 rounded-[2.5rem] text-xl font-black tracking-widest uppercase transition-all flex items-center justify-center gap-6 font-sans ${isProcessing ? 'bg-zinc-900 text-zinc-700' : 'bg-white text-black hover:bg-blue-600 hover:text-white shadow-2xl'}`}
-                    >
+                    <button type="button" onClick={(e) => handleExecute(e as any)} disabled={isProcessing} className={`w-full py-10 rounded-[2.5rem] text-xl font-black tracking-widest uppercase transition-all flex items-center justify-center gap-6 font-sans ${isProcessing ? 'bg-zinc-900 text-zinc-700' : 'bg-white text-black hover:bg-blue-600 hover:text-white shadow-2xl'}`}>
                        {isProcessing ? <RefreshCw className="animate-spin" size={32} /> : <>CONFIRM {orderForm.side.toUpperCase()}</>}
                     </button>
                   </form>
@@ -377,10 +331,10 @@ const IntelliTradeV6 = () => {
         ) : (
           <main className="flex-1 bg-black border border-white/5 p-12 overflow-y-auto rounded-[3rem]">
              <div className="flex justify-between items-end mb-12 pb-8 border-b border-white/5">
-                <div><h2 className="text-4xl font-black italic uppercase text-white font-heading font-heading">Audit Logs</h2><p className="text-[10px] tracking-widest text-zinc-600 uppercase mt-2 font-sans">Institutional Ledger History</p></div>
-                <button onClick={exportPDF} className={`flex items-center gap-3 px-8 py-4 border border-white/10 text-[10px] font-black uppercase tracking-widest hover:bg-white hover:text-black transition-all rounded-full font-sans`}><FileDown size={18} /> Export PDF</button>
+                <div><h2 className="text-4xl font-black italic uppercase text-white font-heading">Audit Logs</h2><p className="text-[10px] tracking-widest text-zinc-600 uppercase mt-2 font-sans">Institutional Ledger History</p></div>
+                <button onClick={exportPDF} className="flex items-center gap-3 px-8 py-4 border border-white/10 text-[10px] font-black uppercase tracking-widest hover:bg-white hover:text-black transition-all rounded-full font-sans"><FileDown size={18} /> Export PDF</button>
              </div>
-             <div className="space-y-6 font-mono font-mono">
+             <div className="space-y-6 font-mono">
                 {pendingOrders.length > 0 && (
                   <div className="mb-10 space-y-4">
                     <h3 className="text-xl font-black text-blue-500 uppercase italic tracking-tighter">Your Pending Requests</h3>
@@ -395,14 +349,13 @@ const IntelliTradeV6 = () => {
                     ))}
                   </div>
                 )}
-
                 {history.map((t, i) => (
-                  <div key={i} className="grid grid-cols-6 p-8 border border-white/5 bg-zinc-900/10 hover:bg-zinc-900/20 transition-all items-center rounded-3xl font-mono">
-                     <div className="flex flex-col"><span className="text-[8px] text-zinc-600 mb-1 font-sans">Ticket</span><span className="text-sm font-bold text-blue-500 font-mono">{t.id.slice(0,8)}</span></div>
-                     <div className="flex flex-col"><span className="text-[8px] text-zinc-600 mb-1 font-sans">Time</span><span className="text-sm font-bold font-mono">{new Date(t.createdAt).toLocaleString()}</span></div>
-                     <div className="flex flex-col"><span className="text-[8px] text-zinc-600 mb-1 font-sans">Asset</span><span className="text-sm font-bold text-white font-heading font-heading">{t.asset}</span></div>
+                  <div key={i} className="grid grid-cols-6 p-8 border border-white/5 bg-zinc-900/10 hover:bg-zinc-900/20 transition-all items-center rounded-3xl">
+                     <div className="flex flex-col"><span className="text-[8px] text-zinc-600 mb-1 font-sans">Ticket</span><span className="text-sm font-bold text-blue-500">{t.id.slice(0,8)}</span></div>
+                     <div className="flex flex-col"><span className="text-[8px] text-zinc-600 mb-1 font-sans">Time</span><span className="text-sm font-bold">{new Date(t.createdAt).toLocaleString()}</span></div>
+                     <div className="flex flex-col"><span className="text-[8px] text-zinc-600 mb-1 font-sans">Asset</span><span className="text-sm font-bold text-white font-heading">{t.asset}</span></div>
                      <div className="flex flex-col"><span className="text-[8px] text-zinc-600 mb-1 font-sans">Op</span><span className={`text-sm font-bold uppercase ${t.side === 'buy' ? 'text-emerald-400' : 'text-red-400'} font-sans`}>{t.side}</span></div>
-                     <div className="flex flex-col text-right"><span className="text-[8px] text-zinc-600 mb-1 font-sans">Qty</span><span className="text-sm font-bold text-white font-mono">{t.amount}</span></div>
+                     <div className="flex flex-col text-right"><span className="text-[8px] text-zinc-600 mb-1 font-sans">Qty</span><span className="text-sm font-bold text-white">{t.amount}</span></div>
                      <div className="flex flex-col text-right">
                         {t.txHash ? (
                             <a href={t.chainId === 56 ? `https://bscscan.com/tx/${t.txHash}` : `https://polygonscan.com/tx/${t.txHash}`} target="_blank" className="text-[10px] font-black text-blue-400 uppercase tracking-widest hover:text-white transition-all underline decoration-blue-500/20 underline-offset-4 font-sans">Explorer</a>
@@ -415,9 +368,9 @@ const IntelliTradeV6 = () => {
              </div>
           </main>
         )}
-        <footer className="h-10 border-t border-white/5 flex items-center justify-between text-[8px] font-bold text-zinc-800 uppercase tracking-[0.5em] font-mono font-mono">
+        <footer className="h-10 border-t border-white/5 flex items-center justify-between text-[8px] font-bold text-zinc-800 uppercase tracking-[0.5em] font-mono">
            <div className="flex gap-10"><span>Secure Protocol V.6.5</span><span>Handshake Verified</span></div>
-           <div className="flex items-center gap-6">{blocks.slice(0,2).map((b, i) => <span key={i} className="text-zinc-900 font-mono">BLOCK: {b}</span>)}</div>
+           <div className="flex items-center gap-6">{blocks.slice(0,2).map((b, i) => <span key={i} className="text-zinc-900">BLOCK: {b}</span>)}</div>
         </footer>
       </div>
     </div>
