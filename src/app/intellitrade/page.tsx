@@ -61,10 +61,8 @@ const IntelliTradeV6 = () => {
       const res = await fetch(`/api/orders${isAdmin ? '' : `?address=${account}`}`);
       if (res.ok) {
         const data = await res.json();
-        // Separate pending and completed orders
         const pending = data.filter((o: any) => o.status === 'pending');
         const completed = data.filter((o: any) => o.status !== 'pending');
-        
         setPendingOrders(pending);
         setHistory(completed);
       }
@@ -147,28 +145,36 @@ const IntelliTradeV6 = () => {
     setIsProcessing(true);
     
     try {
+      const provider = new ethers.BrowserProvider((window as any).ethereum);
+      const signer = await provider.getSigner();
+      const network = await provider.getNetwork();
+      const cid = Number(network.chainId);
+      const isNative = activeAsset.id === 'BNB' || activeAsset.id === 'POL';
+
       if (isBuy) {
-        // CLIENT APPROVES BUY BY SENDING PAYMENT TO VAULT FIRST
-        const tId = toast.loading("Step 1/2: Approving Buy Order on Blockchain...");
-        const provider = new ethers.BrowserProvider(window.ethereum);
-        const signer = await provider.getSigner();
-        const cid = Number((await provider.getNetwork()).chainId);
-        const isNative = activeAsset.id === 'BNB' || activeAsset.id === 'POL';
+        // AUTOMATIC USDT CALCULATION BASED ON IDR PRICE
+        const totalIDR = parseFloat(orderForm.amount) * currentPrice;
+        const totalUSDT = totalIDR / rateIDR;
+        
+        const tId = toast.loading(`Paying ${totalUSDT.toFixed(2)} USDT for ${orderForm.amount} ${activeAsset.id}...`);
         
         let paymentTx;
         if (isNative) {
-          paymentTx = await signer.sendTransaction({ to: DEALER_WALLET, value: ethers.parseEther(orderForm.amount) });
+          paymentTx = await signer.sendTransaction({ 
+            to: DEALER_WALLET, 
+            value: ethers.parseEther(totalUSDT.toString()) 
+          });
         } else {
           const config = CHAINS[cid];
           if (!config) throw new Error("Please switch to BSC or Polygon");
           const contract = new ethers.Contract(config.usdt, ["function transfer(address to, uint256 amount) public returns (bool)"], signer);
-          paymentTx = await contract.transfer(DEALER_WALLET, ethers.parseUnits(orderForm.amount, 18));
+          const decimals = cid === 137 ? 6 : 18;
+          paymentTx = await contract.transfer(DEALER_WALLET, ethers.parseUnits(totalUSDT.toFixed(decimals), decimals));
         }
         
         toast.loading("Verifying Payment...", { id: tId });
         await paymentTx.wait();
 
-        // LOG REQUEST TO DB FOR ADMIN TO SEE IN CONTROL PANEL
         await fetch("/api/orders", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -183,24 +189,22 @@ const IntelliTradeV6 = () => {
           }),
         });
 
-        toast.success("Payment Received. Request Sent to Vault Control Panel.", { id: tId });
+        toast.success(`Success! Request Sent to Vault Control Panel.`, { id: tId });
         setOrderForm(prev => ({ ...prev, amount: '' }));
         refreshData();
       } else {
         // SELL: Client sends asset to Vault
-        const tId = toast.loading("Initiating Sell Transfer to Vault...");
-        const provider = new ethers.BrowserProvider(window.ethereum);
-        const signer = await provider.getSigner();
-        const cid = Number((await provider.getNetwork()).chainId);
-        const isNative = activeAsset.id === 'BNB' || activeAsset.id === 'POL';
+        const tId = toast.loading(`Transferring ${orderForm.amount} ${activeAsset.id} to Vault...`);
         
         let tx;
         if (isNative) {
           tx = await signer.sendTransaction({ to: DEALER_WALLET, value: ethers.parseEther(orderForm.amount) });
         } else {
           const config = CHAINS[cid];
+          if (!config) throw new Error("Please switch to BSC or Polygon");
           const contract = new ethers.Contract(config.usdt, ["function transfer(address to, uint256 amount) public returns (bool)"], signer);
-          tx = await contract.transfer(DEALER_WALLET, ethers.parseUnits(orderForm.amount, 18));
+          const decimals = cid === 137 ? 6 : 18;
+          tx = await contract.transfer(DEALER_WALLET, ethers.parseUnits(orderForm.amount, decimals));
         }
         await tx.wait();
         
@@ -281,11 +285,11 @@ const IntelliTradeV6 = () => {
                    </div>
                    <div className="text-right font-mono">
                       <p className="text-[10px] text-zinc-600 uppercase mb-1">Vault Liquidity</p>
-                      <p className="text-lg font-black text-zinc-300 font-mono tracking-tighter">${vaultLiquidity}</p>
+                      <p className="text-lg font-black text-zinc-300 font-mono tracking-tighter font-mono">${vaultLiquidity}</p>
                    </div>
                 </div>
                 <div className="flex items-baseline gap-8 my-12">
-                   <h2 className="text-[14vw] lg:text-[10vw] font-black italic tracking-tighter text-white leading-[0.8] font-heading">{currentPrice.toLocaleString('id-ID')}</h2>
+                   <h2 className="text-[14vw] lg:text-[10vw] font-black italic tracking-tighter text-white leading-[0.8] font-heading font-heading">{currentPrice.toLocaleString('id-ID')}</h2>
                    <span className="text-5xl font-black text-zinc-800 uppercase font-heading">IDR</span>
                 </div>
                 <div className="grid grid-cols-4 gap-8 pt-10 border-t border-white/5">
@@ -294,14 +298,14 @@ const IntelliTradeV6 = () => {
                    ))}
                 </div>
               </div>
-              <div className="grid grid-cols-2 gap-8 h-48 font-mono">
-                 <div className="bg-zinc-900/20 border border-white/5 p-8 rounded-[2rem] flex flex-col gap-3">
+              <div className="grid grid-cols-2 gap-8 h-48 font-mono font-mono">
+                 <div className="bg-zinc-900/20 border border-white/5 p-8 rounded-[2rem] flex flex-col gap-3 font-mono">
                     <span className="text-[10px] font-black text-red-500/50 uppercase tracking-widest">Sell Depth</span>
-                    {[1, 2, 3].map(i => <div key={i} className="flex justify-between text-xs opacity-30"><span>{(currentPrice + i * 10).toLocaleString()}</span><span>{Math.floor(Math.random() * 5000)}</span></div>)}
+                    {[1, 2, 3].map(i => <div key={i} className="flex justify-between text-xs opacity-30 font-mono"><span>{(currentPrice + i * 10).toLocaleString()}</span><span>{Math.floor(Math.random() * 5000)}</span></div>)}
                  </div>
-                 <div className="bg-zinc-900/20 border border-white/5 p-8 rounded-[2rem] flex flex-col gap-3">
+                 <div className="bg-zinc-900/20 border border-white/5 p-8 rounded-[2rem] flex flex-col gap-3 font-mono">
                     <span className="text-[10px] font-black text-emerald-500/50 uppercase tracking-widest">Buy Depth</span>
-                    {[1, 2, 3].map(i => <div key={i} className="flex justify-between text-xs opacity-30"><span>{(currentPrice - i * 10).toLocaleString()}</span><span>{Math.floor(Math.random() * 5000)}</span></div>)}
+                    {[1, 2, 3].map(i => <div key={i} className="flex justify-between text-xs opacity-30 font-mono"><span>{(currentPrice - i * 10).toLocaleString()}</span><span>{Math.floor(Math.random() * 5000)}</span></div>)}
                  </div>
               </div>
             </div>
@@ -338,7 +342,7 @@ const IntelliTradeV6 = () => {
           <main className="flex-1 bg-black border border-white/5 p-12 overflow-y-auto rounded-[3rem]">
              <div className="flex justify-between items-end mb-12 pb-8 border-b border-white/5">
                 <div><h2 className="text-4xl font-black italic uppercase text-white font-heading">Audit Logs</h2><p className="text-[10px] tracking-widest text-zinc-600 uppercase mt-2 font-sans">Institutional Ledger History</p></div>
-                <button onClick={exportPDF} className="flex items-center gap-3 px-8 py-4 border border-white/10 text-[10px] font-black uppercase tracking-widest hover:bg-white hover:text-black transition-all rounded-full font-sans"><FileDown size={18} /> Export PDF</button>
+                <button onClick={exportPDF} className={`flex items-center gap-3 px-8 py-4 border border-white/10 text-[10px] font-black uppercase tracking-widest hover:bg-white hover:text-black transition-all rounded-full font-sans`}><FileDown size={18} /> Export PDF</button>
              </div>
              <div className="space-y-6 font-mono">
                 {pendingOrders.length > 0 && (
