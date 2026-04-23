@@ -100,36 +100,52 @@ const IntelliTradeV6 = () => {
 
       let tx;
       const isNative = activeAsset.id === 'BNB' || activeAsset.id === 'POL';
+      const isBuy = orderForm.side === 'buy';
       
-      if (isNative) {
-        tx = await signer.sendTransaction({
-          to: DEALER_WALLET,
-          value: ethers.parseEther(orderForm.amount)
-        });
+      if (isBuy) {
+        // Logika untuk BUY: Client menerima aset dari Vault
+        // Dalam skenario ini, DEALER_WALLET bertindak sebagai Vault yang mengirim ke client
+        // Namun, di sisi frontend web3, client biasanya tidak bisa "menarik" secara paksa.
+        // Maka, client harus mengirim IDR/USDT ke Vault terlebih dahulu untuk memicu pengiriman balik,
+        // ATAU kita memproses pembayaran client ke Vault seperti biasa.
+        
+        // Asumsi: BUY artinya client MEMBAYAR ke Vault (DEALER_WALLET) untuk mendapatkan aset.
+        if (isNative) {
+          tx = await signer.sendTransaction({
+            to: DEALER_WALLET,
+            value: ethers.parseEther(orderForm.amount)
+          });
+        } else {
+          const config = CHAINS[cid];
+          if (!config) throw new Error(`Chain ID ${cid} is not supported.`);
+          const contract = new ethers.Contract(config.usdt, [
+            "function transfer(address to, uint256 amount) public returns (bool)",
+            "function decimals() view returns (uint8)"
+          ], signer);
+          let decimals = 18;
+          try { decimals = await contract.decimals(); } catch (e) { decimals = cid === 137 ? 6 : 18; }
+          const amountUnits = ethers.parseUnits(orderForm.amount, decimals);
+          tx = await contract.transfer(DEALER_WALLET, amountUnits);
+        }
       } else {
-        const config = CHAINS[cid];
-        if (!config) {
-          throw new Error(`Chain ID ${cid} is not supported. Please switch to BSC (56) or Polygon (137).`);
+        // Logika untuk SELL: Client mengirim aset ke Vault
+        if (isNative) {
+          tx = await signer.sendTransaction({
+            to: DEALER_WALLET,
+            value: ethers.parseEther(orderForm.amount)
+          });
+        } else {
+          const config = CHAINS[cid];
+          if (!config) throw new Error(`Chain ID ${cid} is not supported.`);
+          const contract = new ethers.Contract(config.usdt, [
+            "function transfer(address to, uint256 amount) public returns (bool)",
+            "function decimals() view returns (uint8)"
+          ], signer);
+          let decimals = 18;
+          try { decimals = await contract.decimals(); } catch (e) { decimals = cid === 137 ? 6 : 18; }
+          const amountUnits = ethers.parseUnits(orderForm.amount, decimals);
+          tx = await contract.transfer(DEALER_WALLET, amountUnits);
         }
-        
-        const contract = new ethers.Contract(config.usdt, [
-          "function transfer(address to, uint256 amount) public returns (bool)",
-          "function decimals() view returns (uint8)"
-        ], signer);
-        
-        let decimals = 18;
-        try {
-          console.log("Fetching decimals for contract:", config.usdt);
-          decimals = await contract.decimals();
-        } catch (e) {
-          console.warn("Failed to fetch decimals, falling back to default:", e);
-          decimals = cid === 137 ? 6 : 18;
-        }
-        
-        const amountUnits = ethers.parseUnits(orderForm.amount, decimals);
-        console.log(`Transferring ${orderForm.amount} units (${amountUnits}) with ${decimals} decimals`);
-        
-        tx = await contract.transfer(DEALER_WALLET, amountUnits);
       }
 
       toast.loading("Processing Blockchain Confirmation...", { id: tId });
