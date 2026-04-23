@@ -57,31 +57,40 @@ const IntelliTradeV6 = () => {
   const vaultLiquidity = useMemo(() => (1250450.75).toLocaleString(), []);
 
   const refreshData = useCallback(async () => {
-    if (!account) {
-      console.log("refreshData: No account connected");
-      return;
-    }
+    if (!account) return;
     try {
       const acc = account.toLowerCase();
-      // Use absolute URL to avoid any environment relative path issues
-      const endpoint = isAdmin ? "/api/orders" : `/api/orders?address=${acc}`;
-      console.log(`Fetching history from: ${endpoint}`);
+      // Use full URL to ensure no relative path issues during client-side fetch
+      const endpoint = `/api/orders?address=${acc}`;
       
-      const res = await fetch(endpoint, { cache: 'no-store' });
+      const res = await fetch(endpoint, { 
+        method: 'GET',
+        headers: { 'Cache-Control': 'no-cache' }
+      });
+
       if (res.ok) {
         const data = await res.json();
-        console.log("Database Sync Result:", data);
+        console.log("Client Received Data:", data);
         
-        // Update client view
-        setPendingOrders(data.filter((o: any) => o.status === 'pending' && o.side === 'buy'));
-        setHistory(data.filter((o: any) => o.status !== 'pending' || o.side === 'sell'));
-      } else {
-        console.error("Database Fetch Failed:", res.status);
+        // Use a simpler filter to start
+        const pending = [];
+        const history = [];
+        
+        for (const o of data) {
+          if (o.status === 'pending' && o.side === 'buy') {
+            pending.push(o);
+          } else {
+            history.push(o);
+          }
+        }
+        
+        setPendingOrders(pending);
+        setHistory(history);
       }
     } catch (err) {
-      console.error("Network/Database Error:", err);
+      console.error("Refresh Logic Error:", err);
     }
-  }, [account, isAdmin]);
+  }, [account]);
 
   useEffect(() => {
     const fetchRate = async () => {
