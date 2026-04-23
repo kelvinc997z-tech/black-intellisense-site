@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { 
   ShoppingCart, Wallet, ArrowRightLeft, ShieldCheck, Zap, Info, 
   Activity, Cpu, Terminal, Radio, Database, BarChart3, ScanFace, 
@@ -52,6 +52,23 @@ const IntelliTradeV6 = () => {
 
   const vaultLiquidity = useMemo(() => (1250450.75).toLocaleString(), []);
 
+  const refreshData = useCallback(async () => {
+    if (!account) return;
+    try {
+      // Fetch from Database API instead of localStorage
+      const res = await fetch(`/api/orders${isAdmin ? '' : `?address=${account}`}`);
+      if (res.ok) {
+        const data = await res.json();
+        const pending = data.filter((o: any) => o.status === 'pending');
+        const approved = data.filter((o: any) => o.status !== 'pending');
+        setPendingOrders(pending);
+        setHistory(approved);
+      }
+    } catch (err) {
+      console.error("Fetch Error:", err);
+    }
+  }, [account, isAdmin]);
+
   useEffect(() => {
     const fetchRate = async () => {
       try {
@@ -86,12 +103,6 @@ const IntelliTradeV6 = () => {
       });
     }
 
-    const savedPending = localStorage.getItem('pending_orders');
-    if (savedPending) setPendingOrders(JSON.parse(savedPending));
-    
-    const savedHistory = localStorage.getItem('trade_history');
-    if (savedHistory) setHistory(JSON.parse(savedHistory));
-
     return () => {
       if (window.ethereum?.removeListener) {
         window.ethereum.removeListener('chainChanged', handleChainChanged);
@@ -100,19 +111,12 @@ const IntelliTradeV6 = () => {
     };
   }, []);
 
-  const userPending = useMemo(() => {
-    if (!account) return [];
-    const acc = account.toLowerCase();
-    if (acc === DEALER_WALLET.toLowerCase()) return pendingOrders; 
-    return pendingOrders.filter(p => p.targetAddress.toLowerCase() === acc);
-  }, [pendingOrders, account]);
-
-  const userHistory = useMemo(() => {
-    if (!account) return [];
-    const acc = account.toLowerCase();
-    if (acc === DEALER_WALLET.toLowerCase()) return history;
-    return history.filter(h => h.owner?.toLowerCase() === acc);
-  }, [history, account]);
+  // Poll for updates from DB
+  useEffect(() => {
+    refreshData();
+    const interval = setInterval(refreshData, 5000);
+    return () => clearInterval(interval);
+  }, [refreshData]);
 
   const disconnectWallet = () => {
     setAccount(null);
@@ -142,31 +146,31 @@ const IntelliTradeV6 = () => {
     try {
       if (isBuy) {
         const tId = toast.loading("Submitting Institutional Buy Request...");
-        const newOrder = {
-          id: "ORD-" + Math.random().toString(36).slice(2, 9).toUpperCase(),
-          targetAddress: account.toLowerCase(),
-          asset: activeAsset.id,
-          amount: orderForm.amount,
-          price: currentPrice,
-          date: new Date().toLocaleString(),
-          status: 'pending_approval'
-        };
         
-        const saved = localStorage.getItem('pending_orders');
-        const currentPending = saved ? JSON.parse(saved) : [];
-        const updatedPending = [newOrder, ...currentPending];
-        
-        setPendingOrders(updatedPending);
-        localStorage.setItem('pending_orders', JSON.stringify(updatedPending));
+        // SAVE TO DATABASE
+        const res = await fetch("/api/orders", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            targetAddress: account,
+            asset: activeAsset.id,
+            amount: orderForm.amount,
+            price: currentPrice,
+            side: 'buy',
+            chainId: chainId
+          }),
+        });
+
+        if (!res.ok) throw new Error("Database error");
 
         toast.success("Request Submitted. Awaiting Admin Approval.", { id: tId });
         setOrderForm(prev => ({ ...prev, amount: '' }));
+        refreshData();
       } else {
         const tId = toast.loading("Initiating Sell Transfer to Vault...");
         const provider = new ethers.BrowserProvider(window.ethereum);
         const signer = await provider.getSigner();
-        const network = await provider.getNetwork();
-        const cid = Number(network.chainId);
+        const cid = Number((await provider.getNetwork()).chainId);
         const isNative = activeAsset.id === 'BNB' || activeAsset.id === 'POL';
         
         let tx;
@@ -179,82 +183,28 @@ const IntelliTradeV6 = () => {
         }
         await tx.wait();
         
-        const newTrade = {
-          id: tx.hash.slice(0,12),
-          fullHash: tx.hash,
-          date: new Date().toLocaleString(),
-          asset: activeAsset.id,
-          side: 'sell',
-          amount: orderForm.amount,
-          total: (parseFloat(orderForm.amount) * currentPrice).toLocaleString('id-ID'),
-          chain: cid === 56 ? 'BSC' : 'Polygon',
-          owner: account.toLowerCase()
-        };
-
-        const savedHistory = localStorage.getItem('trade_history');
-        const currentHistory = savedHistory ? JSON.parse(savedHistory) : [];
-        const updatedHistory = [newTrade, ...currentHistory];
-        setHistory(updatedHistory);
-        localStorage.setItem('trade_history', JSON.stringify(updatedHistory));
+        // SAVE SELL TO DB TOO
+        await fetch("/api/orders", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            targetAddress: account,
+            asset: activeAsset.id,
+            amount: orderForm.amount,
+            price: currentPrice,
+            side: 'sell',
+            status: 'approved',
+            txHash: tx.hash,
+            chainId: cid
+          }),
+        });
 
         toast.success("Asset Sent to Vault Successfully", { id: tId });
         setOrderForm(prev => ({ ...prev, amount: '' }));
+        refreshData();
       }
     } catch (err: any) {
       toast.error(err.message || "Transaction failed");
-    } finally {
-      setIsProcessing(false);
-    }
-  };
-
-  const approveOrder = async (order: any) => {
-    if (!isAdmin) return toast.error("Admin Only");
-    setIsProcessing(true);
-    const tId = toast.loading(`Approving Order ${order.id}...`);
-    
-    try {
-      const provider = new ethers.BrowserProvider(window.ethereum);
-      const signer = await provider.getSigner();
-      const network = await provider.getNetwork();
-      const cid = Number(network.chainId);
-      const isNative = order.asset === 'BNB' || order.asset === 'POL';
-
-      let tx;
-      if (isNative) {
-        tx = await signer.sendTransaction({ to: order.targetAddress, value: ethers.parseEther(order.amount) });
-      } else {
-        const config = CHAINS[cid];
-        const contract = new ethers.Contract(config.usdt, ["function transfer(address to, uint256 amount) public returns (bool)"], signer);
-        tx = await contract.transfer(order.targetAddress, ethers.parseUnits(order.amount, 18));
-      }
-      await tx.wait();
-      
-      const newTrade = {
-        id: tx.hash.slice(0,12),
-        fullHash: tx.hash,
-        date: new Date().toLocaleString(),
-        asset: order.asset,
-        side: 'buy',
-        amount: order.amount,
-        total: (parseFloat(order.amount) * order.price).toLocaleString('id-ID'),
-        chain: cid === 56 ? 'BSC' : 'Polygon',
-        status: 'approved',
-        owner: order.targetAddress.toLowerCase()
-      };
-
-      const savedHistory = localStorage.getItem('trade_history');
-      const currentHistory = savedHistory ? JSON.parse(savedHistory) : [];
-      const updatedHistory = [newTrade, ...currentHistory];
-      setHistory(updatedHistory);
-      localStorage.setItem('trade_history', JSON.stringify(updatedHistory));
-
-      const updatedPending = pendingOrders.filter(p => p.id !== order.id);
-      setPendingOrders(updatedPending);
-      localStorage.setItem('pending_orders', JSON.stringify(updatedPending));
-      
-      toast.success("Order Approved & Assets Sent!", { id: tId });
-    } catch (err: any) {
-      toast.error(err.message || "Approval failed");
     } finally {
       setIsProcessing(false);
     }
@@ -266,7 +216,7 @@ const IntelliTradeV6 = () => {
     autoTable(doc, {
       startY: 30,
       head: [['Ticket', 'Time', 'Asset', 'Side', 'Qty', 'Total']],
-      body: userHistory.map(t => [t.id, t.date, t.asset, t.side, t.amount, t.total]),
+      body: history.map(t => [t.id.slice(0,8), new Date(t.createdAt).toLocaleString(), t.asset, t.side, t.amount, `Rp ${ (parseFloat(t.amount) * t.price).toLocaleString('id-ID')}`]),
     });
     doc.save('Report.pdf');
   };
@@ -357,7 +307,6 @@ const IntelliTradeV6 = () => {
                   <form 
                     onSubmit={(e) => {
                       e.preventDefault();
-                      console.log("Form Submitted");
                       handleExecute(e);
                     }} 
                     className="flex-1 flex flex-col justify-between font-mono"
@@ -386,10 +335,7 @@ const IntelliTradeV6 = () => {
                     </div>
                     <button 
                       type="button"
-                      onClick={(e) => {
-                        console.log("Button Clicked");
-                        handleExecute(e as any);
-                      }}
+                      onClick={(e) => handleExecute(e as any)}
                       disabled={isProcessing} 
                       className={`w-full py-10 rounded-[2.5rem] text-xl font-black tracking-widest uppercase transition-all flex items-center justify-center gap-6 font-sans ${isProcessing ? 'bg-zinc-900 text-zinc-700' : 'bg-white text-black hover:bg-blue-600 hover:text-white shadow-2xl'}`}
                     >
@@ -406,37 +352,35 @@ const IntelliTradeV6 = () => {
                 <button onClick={exportPDF} className={`flex items-center gap-3 px-8 py-4 border border-white/10 text-[10px] font-black uppercase tracking-widest hover:bg-white hover:text-black transition-all rounded-full font-sans`}><FileDown size={18} /> Export PDF</button>
              </div>
              <div className="space-y-6 font-mono font-mono">
-                {userPending.length > 0 && (
+                {pendingOrders.length > 0 && (
                   <div className="mb-10 space-y-4">
-                    <h3 className="text-xl font-black text-blue-500 uppercase italic tracking-tighter">
-                      {isAdmin ? "Admin: Pending Approvals" : "Your Pending Requests"}
-                    </h3>
-                    {userPending.map((p, i) => (
-                      <div key={i} className={`grid grid-cols-6 p-8 border items-center rounded-3xl ${isAdmin ? 'border-blue-500/30 bg-blue-500/5 animate-pulse' : 'border-white/5 bg-zinc-900/50'}`}>
-                         <div className="flex flex-col"><span className="text-[8px] text-zinc-600 mb-1 font-sans">ID</span><span className="text-sm font-bold text-blue-400">{p.id}</span></div>
-                         <div className="flex flex-col col-span-2"><span className="text-[8px] text-zinc-600 mb-1 font-sans">Wallet</span><span className="text-xs font-bold truncate">{p.targetAddress}</span></div>
+                    <h3 className="text-xl font-black text-blue-500 uppercase italic tracking-tighter">Your Pending Requests</h3>
+                    {pendingOrders.map((p, i) => (
+                      <div key={i} className="grid grid-cols-6 p-8 border border-white/5 bg-zinc-900/50 items-center rounded-3xl">
+                         <div className="flex flex-col"><span className="text-[8px] text-zinc-600 mb-1 font-sans">ID</span><span className="text-sm font-bold text-blue-400">{p.id.slice(0,8)}</span></div>
+                         <div className="flex flex-col col-span-2"><span className="text-[8px] text-zinc-600 mb-1 font-sans">Time</span><span className="text-xs font-bold">{new Date(p.createdAt).toLocaleString()}</span></div>
                          <div className="flex flex-col"><span className="text-[8px] text-zinc-600 mb-1 font-sans">Asset</span><span className="text-sm font-bold text-white">{p.asset}</span></div>
                          <div className="flex flex-col"><span className="text-[8px] text-zinc-600 mb-1 font-sans">Qty</span><span className="text-sm font-bold text-white">{p.amount}</span></div>
-                         <div className="flex flex-col text-right">
-                            {isAdmin ? (
-                              <button onClick={() => approveOrder(p)} className="px-6 py-3 bg-blue-600 text-white text-[10px] font-black uppercase rounded-xl hover:bg-white hover:text-black transition-all">Approve & Send</button>
-                            ) : (
-                              <span className="text-[10px] font-black text-zinc-500 uppercase italic">Awaiting Admin</span>
-                            )}
-                         </div>
+                         <div className="flex flex-col text-right"><span className="text-[10px] font-black text-zinc-500 uppercase italic">Awaiting Admin</span></div>
                       </div>
                     ))}
                   </div>
                 )}
 
-                {userHistory.map((t, i) => (
+                {history.map((t, i) => (
                   <div key={i} className="grid grid-cols-6 p-8 border border-white/5 bg-zinc-900/10 hover:bg-zinc-900/20 transition-all items-center rounded-3xl font-mono">
-                     <div className="flex flex-col"><span className="text-[8px] text-zinc-600 mb-1 font-sans">Ticket</span><span className="text-sm font-bold text-blue-500 font-mono">{t.id}</span></div>
-                     <div className="flex flex-col"><span className="text-[8px] text-zinc-600 mb-1 font-sans">Time</span><span className="text-sm font-bold font-mono">{t.date}</span></div>
+                     <div className="flex flex-col"><span className="text-[8px] text-zinc-600 mb-1 font-sans">Ticket</span><span className="text-sm font-bold text-blue-500 font-mono">{t.id.slice(0,8)}</span></div>
+                     <div className="flex flex-col"><span className="text-[8px] text-zinc-600 mb-1 font-sans">Time</span><span className="text-sm font-bold font-mono">{new Date(t.createdAt).toLocaleString()}</span></div>
                      <div className="flex flex-col"><span className="text-[8px] text-zinc-600 mb-1 font-sans">Asset</span><span className="text-sm font-bold text-white font-heading font-heading">{t.asset}</span></div>
                      <div className="flex flex-col"><span className="text-[8px] text-zinc-600 mb-1 font-sans">Op</span><span className={`text-sm font-bold uppercase ${t.side === 'buy' ? 'text-emerald-400' : 'text-red-400'} font-sans`}>{t.side}</span></div>
                      <div className="flex flex-col text-right"><span className="text-[8px] text-zinc-600 mb-1 font-sans">Qty</span><span className="text-sm font-bold text-white font-mono">{t.amount}</span></div>
-                     <div className="flex flex-col text-right"><a href={t.chain === 'BSC' ? `https://bscscan.com/tx/${t.fullHash}` : `https://polygonscan.com/tx/${t.fullHash}`} target="_blank" className="text-[10px] font-black text-blue-400 uppercase tracking-widest hover:text-white transition-all underline decoration-blue-500/20 underline-offset-4 font-sans">Explorer</a></div>
+                     <div className="flex flex-col text-right">
+                        {t.txHash ? (
+                            <a href={t.chainId === 56 ? `https://bscscan.com/tx/${t.txHash}` : `https://polygonscan.com/tx/${t.txHash}`} target="_blank" className="text-[10px] font-black text-blue-400 uppercase tracking-widest hover:text-white transition-all underline decoration-blue-500/20 underline-offset-4 font-sans">Explorer</a>
+                        ) : (
+                            <span className="text-[10px] font-bold text-emerald-500">OFF-CHAIN</span>
+                        )}
+                     </div>
                   </div>
                 ))}
              </div>

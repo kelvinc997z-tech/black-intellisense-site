@@ -1,0 +1,25 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Order {
+  id              String   @id @default(cuid())
+  targetAddress   String
+  asset           String
+  amount          String
+  price           Float
+  side            String   // "buy" | "sell"
+  status          String   @default("pending") // "pending" | "approved" | "rejected"
+  txHash          String?
+  chainId         Int?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([targetAddress])
+  @@index([status])
+}
