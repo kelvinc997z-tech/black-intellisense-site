@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useEffect, useState, useMemo } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { 
   ShieldCheck, RefreshCw, ArrowLeft, ListFilter, Terminal, 
   Wallet, Activity, Zap, ArrowUpRight, History, Search, Box,
@@ -32,7 +32,18 @@ const VaultControlPanel = () => {
     return account.toLowerCase() === DEALER_WALLET.toLowerCase();
   }, [account]);
 
-  const fetchData = async () => {
+  const getProvider = useCallback(() => {
+    if (typeof window === 'undefined') return null;
+    const win = window as any;
+    if (win.safepal) return win.safepal;
+    if (win.ethereum?.isSafePal) return win.ethereum;
+    if (win.ethereum?.providers?.length) {
+      return win.ethereum.providers.find((p: any) => p.isSafePal) || win.ethereum.providers[0];
+    }
+    return win.ethereum;
+  }, []);
+
+  const fetchData = useCallback(async () => {
     try {
       const res = await fetch("/api/orders");
       if (res.ok) {
@@ -41,14 +52,15 @@ const VaultControlPanel = () => {
         setHistoryOrders(data.filter((o: any) => o.status !== 'pending'));
       }
     } catch (err) {}
-  };
+  }, []);
 
   useEffect(() => {
-    if (window.ethereum) {
-      window.ethereum.request({ method: 'eth_accounts' }).then((accs: string[]) => {
+    const provider = getProvider();
+    if (provider) {
+      provider.request({ method: 'eth_accounts' }).then((accs: string[]) => {
         if (accs.length > 0) setAccount(accs[0]);
       });
-      window.ethereum.on('accountsChanged', (accs: any) => {
+      provider.on('accountsChanged', (accs: any) => {
           setAccount(accs[0] || null);
           setIsUnlocked(false);
       });
@@ -56,7 +68,7 @@ const VaultControlPanel = () => {
     fetchData();
     const interval = setInterval(fetchData, 5000);
     return () => clearInterval(interval);
-  }, []);
+  }, [getProvider, fetchData]);
 
   const handlePinSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -70,23 +82,14 @@ const VaultControlPanel = () => {
   };
 
   const connectWallet = async () => {
-    if (typeof window === 'undefined') return;
-    
-    // SAFE-PAL & UNIVERSAL DETECTION
-    const getProvider = () => {
-      if ((window as any).ethereum?.isSafePal) return (window as any).ethereum;
-      if ((window as any).safepal) return (window as any).safepal;
-      return (window as any).ethereum;
-    };
-
     const provider = getProvider();
-    if (!provider) return toast.error("No Web3 Wallet Found. Please install SafePal.");
+    if (!provider) return toast.error("No Web3 Wallet Found. Please install SafePal or MetaMask.");
     
     setIsProcessing(true);
     try {
-      console.log("Triggering eth_requestAccounts on provider...");
       const accounts = await provider.request({ 
-        method: "eth_requestAccounts"
+        method: "eth_requestAccounts",
+        params: [] 
       });
       
       if (accounts && accounts.length > 0) {
@@ -94,7 +97,7 @@ const VaultControlPanel = () => {
         toast.success("Admin Node Linked");
       }
     } catch (err: any) {
-      console.error("Wallet Error:", err);
+      console.error("Wallet Connection Error:", err);
       toast.error(err.message || "Authorization Failed");
     } finally {
       setIsProcessing(false);
@@ -104,14 +107,14 @@ const VaultControlPanel = () => {
   const approveOrder = async (order: any) => {
     if (!isAdmin || !isUnlocked) return toast.error("ACCESS DENIED");
     
-    const ethereum = (window as any).ethereum;
-    if (!ethereum) return toast.error("No Provider Found");
+    const walletProvider = getProvider();
+    if (!walletProvider) return toast.error("No Provider Found");
 
     setIsProcessing(true);
     const tId = toast.loading(`AUTHORIZING: Sending ${order.asset} to Client...`);
     
     try {
-      const provider = new ethers.BrowserProvider(ethereum);
+      const provider = new ethers.BrowserProvider(walletProvider);
       const signer = await provider.getSigner();
       const network = await provider.getNetwork();
       const cid = Number(network.chainId);
