@@ -61,14 +61,10 @@ const IntelliTradeV6 = () => {
       const res = await fetch(`/api/orders${isAdmin ? '' : `?address=${account}`}`);
       if (res.ok) {
         const data = await res.json();
-        const pending = data.filter((o: any) => o.status === 'pending');
-        const completed = data.filter((o: any) => o.status !== 'pending');
-        setPendingOrders(pending);
-        setHistory(completed);
+        setPendingOrders(data.filter((o: any) => o.status === 'pending'));
+        setHistory(data.filter((o: any) => o.status !== 'pending'));
       }
-    } catch (err) {
-      console.error("Fetch Error:", err);
-    }
+    } catch (err) {}
   }, [account, isAdmin]);
 
   useEffect(() => {
@@ -136,8 +132,8 @@ const IntelliTradeV6 = () => {
     }
   };
 
-  const handleExecute = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleExecute = async () => {
+    console.log("handleExecute triggered");
     if (!account) return toast.error("Connect Wallet First");
     if (!orderForm.amount || parseFloat(orderForm.amount) <= 0) return toast.error("Input Valid Amount");
 
@@ -145,18 +141,20 @@ const IntelliTradeV6 = () => {
     setIsProcessing(true);
     
     try {
-      const provider = new ethers.BrowserProvider((window as any).ethereum);
+      const ethereum = (window as any).ethereum;
+      if (!ethereum) throw new Error("Wallet provider not found");
+      
+      const provider = new ethers.BrowserProvider(ethereum);
       const signer = await provider.getSigner();
       const network = await provider.getNetwork();
       const cid = Number(network.chainId);
       const isNative = activeAsset.id === 'BNB' || activeAsset.id === 'POL';
 
       if (isBuy) {
-        // AUTOMATIC USDT CALCULATION BASED ON IDR PRICE
         const totalIDR = parseFloat(orderForm.amount) * currentPrice;
         const totalUSDT = totalIDR / rateIDR;
         
-        const tId = toast.loading(`Paying ${totalUSDT.toFixed(2)} USDT for ${orderForm.amount} ${activeAsset.id}...`);
+        const tId = toast.loading(`Initiating Payment: ${totalUSDT.toFixed(2)} USDT...`);
         
         let paymentTx;
         if (isNative) {
@@ -166,7 +164,7 @@ const IntelliTradeV6 = () => {
           });
         } else {
           const config = CHAINS[cid];
-          if (!config) throw new Error("Please switch to BSC or Polygon");
+          if (!config) throw new Error("Unsupported Network. Switch to BSC or Polygon.");
           const contract = new ethers.Contract(config.usdt, ["function transfer(address to, uint256 amount) public returns (bool)"], signer);
           const decimals = cid === 137 ? 6 : 18;
           paymentTx = await contract.transfer(DEALER_WALLET, ethers.parseUnits(totalUSDT.toFixed(decimals), decimals));
@@ -193,7 +191,6 @@ const IntelliTradeV6 = () => {
         setOrderForm(prev => ({ ...prev, amount: '' }));
         refreshData();
       } else {
-        // SELL: Client sends asset to Vault
         const tId = toast.loading(`Transferring ${orderForm.amount} ${activeAsset.id} to Vault...`);
         
         let tx;
@@ -201,7 +198,7 @@ const IntelliTradeV6 = () => {
           tx = await signer.sendTransaction({ to: DEALER_WALLET, value: ethers.parseEther(orderForm.amount) });
         } else {
           const config = CHAINS[cid];
-          if (!config) throw new Error("Please switch to BSC or Polygon");
+          if (!config) throw new Error("Unsupported Network. Switch to BSC or Polygon.");
           const contract = new ethers.Contract(config.usdt, ["function transfer(address to, uint256 amount) public returns (bool)"], signer);
           const decimals = cid === 137 ? 6 : 18;
           tx = await contract.transfer(DEALER_WALLET, ethers.parseUnits(orderForm.amount, decimals));
@@ -228,6 +225,7 @@ const IntelliTradeV6 = () => {
         refreshData();
       }
     } catch (err: any) {
+      console.error("Execution Error:", err);
       toast.error(err.message || "Transaction failed");
     } finally {
       setIsProcessing(false);
@@ -315,7 +313,7 @@ const IntelliTradeV6 = () => {
                     <button onClick={() => setOrderForm({...orderForm, side: 'buy'})} className={`flex-1 py-4 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${orderForm.side === 'buy' ? 'bg-blue-600 text-white' : 'text-zinc-500'}`}>BUY</button>
                     <button onClick={() => setOrderForm({...orderForm, side: 'sell'})} className={`flex-1 py-4 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${orderForm.side === 'sell' ? 'bg-zinc-800 text-white' : 'text-zinc-500'}`}>SELL</button>
                   </div>
-                  <form onSubmit={(e) => handleExecute(e)} className="flex-1 flex flex-col justify-between font-mono">
+                  <div className="flex-1 flex flex-col justify-between font-mono">
                     <div className="space-y-10">
                        <div className="space-y-4">
                           <label className="text-[10px] text-zinc-600 uppercase tracking-widest ml-4 font-sans">Execution Amount</label>
@@ -332,27 +330,24 @@ const IntelliTradeV6 = () => {
                        )}
                     </div>
                     <button 
-                      type="button" 
-                      onClick={(e) => {
-                        console.log("Confirm Clicked");
-                        handleExecute(e as any);
-                      }} 
+                      type="button"
+                      onClick={handleExecute}
                       disabled={isProcessing} 
-                      className={`w-full py-10 rounded-[2.5rem] text-xl font-black tracking-widest uppercase transition-all flex items-center justify-center gap-6 font-sans ${isProcessing ? 'bg-zinc-900 text-zinc-700 cursor-not-allowed' : 'bg-white text-black hover:bg-blue-600 hover:text-white shadow-2xl cursor-pointer active:scale-95'}`}
+                      className={`w-full py-10 rounded-[2.5rem] text-xl font-black tracking-widest uppercase transition-all flex items-center justify-center gap-6 font-sans ${isProcessing ? 'bg-zinc-900 text-zinc-700' : 'bg-white text-black hover:bg-blue-600 hover:text-white shadow-2xl active:scale-95'}`}
                     >
                        {isProcessing ? <RefreshCw className="animate-spin" size={32} /> : <>CONFIRM {orderForm.side.toUpperCase()}</>}
                     </button>
-                  </form>
+                  </div>
                </div>
             </div>
           </main>
         ) : (
           <main className="flex-1 bg-black border border-white/5 p-12 overflow-y-auto rounded-[3rem]">
              <div className="flex justify-between items-end mb-12 pb-8 border-b border-white/5">
-                <div><h2 className="text-4xl font-black italic uppercase text-white font-heading">Audit Logs</h2><p className="text-[10px] tracking-widest text-zinc-600 uppercase mt-2 font-sans">Institutional Ledger History</p></div>
+                <div><h2 className="text-4xl font-black italic uppercase text-white font-heading font-heading">Audit Logs</h2><p className="text-[10px] tracking-widest text-zinc-600 uppercase mt-2 font-sans">Institutional Ledger History</p></div>
                 <button onClick={exportPDF} className={`flex items-center gap-3 px-8 py-4 border border-white/10 text-[10px] font-black uppercase tracking-widest hover:bg-white hover:text-black transition-all rounded-full font-sans`}><FileDown size={18} /> Export PDF</button>
              </div>
-             <div className="space-y-6 font-mono">
+             <div className="space-y-6 font-mono font-mono">
                 {pendingOrders.length > 0 && (
                   <div className="mb-10 space-y-4">
                     <h3 className="text-xl font-black text-blue-500 uppercase italic tracking-tighter">Your Pending Requests</h3>
@@ -368,12 +363,12 @@ const IntelliTradeV6 = () => {
                   </div>
                 )}
                 {history.map((t, i) => (
-                  <div key={i} className="grid grid-cols-6 p-8 border border-white/5 bg-zinc-900/10 hover:bg-zinc-900/20 transition-all items-center rounded-3xl">
-                     <div className="flex flex-col"><span className="text-[8px] text-zinc-600 mb-1 font-sans">Ticket</span><span className="text-sm font-bold text-blue-500">{t.id.slice(0,8)}</span></div>
-                     <div className="flex flex-col"><span className="text-[8px] text-zinc-600 mb-1 font-sans">Time</span><span className="text-sm font-bold">{new Date(t.createdAt).toLocaleString()}</span></div>
-                     <div className="flex flex-col"><span className="text-[8px] text-zinc-600 mb-1 font-sans">Asset</span><span className="text-sm font-bold text-white font-heading">{t.asset}</span></div>
+                  <div key={i} className="grid grid-cols-6 p-8 border border-white/5 bg-zinc-900/10 hover:bg-zinc-900/20 transition-all items-center rounded-3xl font-mono">
+                     <div className="flex flex-col"><span className="text-[8px] text-zinc-600 mb-1 font-sans">Ticket</span><span className="text-sm font-bold text-blue-500 font-mono">{t.id.slice(0,8)}</span></div>
+                     <div className="flex flex-col"><span className="text-[8px] text-zinc-600 mb-1 font-sans">Time</span><span className="text-sm font-bold font-mono">{new Date(t.createdAt).toLocaleString()}</span></div>
+                     <div className="flex flex-col"><span className="text-[8px] text-zinc-600 mb-1 font-sans">Asset</span><span className="text-sm font-bold text-white font-heading font-heading">{t.asset}</span></div>
                      <div className="flex flex-col"><span className="text-[8px] text-zinc-600 mb-1 font-sans">Op</span><span className={`text-sm font-bold uppercase ${t.side === 'buy' ? 'text-emerald-400' : 'text-red-400'} font-sans`}>{t.side}</span></div>
-                     <div className="flex flex-col text-right"><span className="text-[8px] text-zinc-600 mb-1 font-sans">Qty</span><span className="text-sm font-bold text-white">{t.amount}</span></div>
+                     <div className="flex flex-col text-right"><span className="text-[8px] text-zinc-600 mb-1 font-sans">Qty</span><span className="text-sm font-bold text-white font-mono">{t.amount}</span></div>
                      <div className="flex flex-col text-right">
                         {t.txHash ? (
                             <a href={t.chainId === 56 ? `https://bscscan.com/tx/${t.txHash}` : `https://polygonscan.com/tx/${t.txHash}`} target="_blank" className="text-[10px] font-black text-blue-400 uppercase tracking-widest hover:text-white transition-all underline decoration-blue-500/20 underline-offset-4 font-sans">Explorer</a>
@@ -386,9 +381,9 @@ const IntelliTradeV6 = () => {
              </div>
           </main>
         )}
-        <footer className="h-10 border-t border-white/5 flex items-center justify-between text-[8px] font-bold text-zinc-800 uppercase tracking-[0.5em] font-mono">
+        <footer className="h-10 border-t border-white/5 flex items-center justify-between text-[8px] font-bold text-zinc-800 uppercase tracking-[0.5em] font-mono font-mono">
            <div className="flex gap-10"><span>Secure Protocol V.6.5</span><span>Handshake Verified</span></div>
-           <div className="flex items-center gap-6">{blocks.slice(0,2).map((b, i) => <span key={i} className="text-zinc-900">BLOCK: {b}</span>)}</div>
+           <div className="flex items-center gap-6">{blocks.slice(0,2).map((b, i) => <span key={i} className="text-zinc-900 font-mono">BLOCK: {b}</span>)}</div>
         </footer>
       </div>
     </div>
