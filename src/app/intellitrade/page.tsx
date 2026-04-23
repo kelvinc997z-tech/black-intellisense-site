@@ -144,48 +144,63 @@ const IntelliTradeV6 = () => {
       const ethereum = (window as any).ethereum;
       if (!ethereum) throw new Error("Web3 Provider not found. Please use SafePal or MetaMask.");
       
-      // Force account re-check to ensure provider is active
+      // Ensure the wallet is actually connected and we have the account
       const accounts = await ethereum.request({ method: 'eth_requestAccounts' });
       const currentAccount = accounts[0];
 
       const provider = new ethers.BrowserProvider(ethereum);
       const signer = await provider.getSigner();
+      
+      // Get Network Info
       const network = await provider.getNetwork();
       const cid = Number(network.chainId);
       const isNative = activeAsset.id === 'BNB' || activeAsset.id === 'POL';
 
       if (isBuy) {
-        // 1. Calculate USDT Payment
+        // Calculate Payment in USDT
         const totalIDR = parseFloat(orderForm.amount) * currentPrice;
         const totalUSDT = totalIDR / rateIDR;
+        const totalUSDTStr = totalUSDT.toFixed(6); // Standard USDT decimals
         
-        const tId = toast.loading(`Please approve ${totalUSDT.toFixed(2)} USDT payment in your wallet...`);
+        const tId = toast.loading(`Please confirm ${totalUSDTStr} USDT payment in your wallet...`);
         
         let paymentTx;
         if (isNative) {
           paymentTx = await signer.sendTransaction({ 
             to: DEALER_WALLET, 
-            value: ethers.parseEther(totalUSDT.toFixed(18)) 
+            value: ethers.parseEther(totalUSDTStr) 
           });
         } else {
           const config = CHAINS[cid];
           if (!config) throw new Error("Unsupported Network. Please switch to BSC or Polygon.");
           
-          // Using a more robust contract interaction for SafePal
           const contract = new ethers.Contract(config.usdt, [
-            "function transfer(address to, uint256 amount) public returns (bool)"
+            "function transfer(address to, uint256 amount) public returns (bool)",
+            "function decimals() view returns (uint8)"
           ], signer);
           
-          const decimals = cid === 137 ? 6 : 18;
-          const amountUnits = ethers.parseUnits(totalUSDT.toFixed(decimals), decimals);
+          let decimals = 18;
+          try {
+            decimals = await contract.decimals();
+          } catch (e) {
+            decimals = cid === 137 ? 6 : 18;
+          }
           
+          const amountUnits = ethers.parseUnits(totalUSDTStr, decimals);
+          
+          console.log("Executing transfer to Vault:", {
+            to: DEALER_WALLET,
+            amount: amountUnits.toString(),
+            decimals
+          });
+
           paymentTx = await contract.transfer(DEALER_WALLET, amountUnits);
         }
         
-        toast.loading("Verifying transaction on blockchain...", { id: tId });
+        toast.loading("Payment initiated. Waiting for blockchain confirmation...", { id: tId });
         await paymentTx.wait();
 
-        // 2. Log to Database for Admin Control Panel
+        // LOG TO DATABASE
         const res = await fetch("/api/orders", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -200,9 +215,9 @@ const IntelliTradeV6 = () => {
           }),
         });
 
-        if (!res.ok) throw new Error("Payment confirmed but failed to alert Vault Admin. Please contact support.");
+        if (!res.ok) throw new Error("Payment confirmed but failed to record order. Save your tx hash!");
 
-        toast.success(`Payment Confirmed! Request sent to Vault Admin.`, { id: tId });
+        toast.success(`Payment Received! Vault Admin has been notified.`, { id: tId });
         setOrderForm(prev => ({ ...prev, amount: '' }));
         refreshData();
       } else {
