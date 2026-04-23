@@ -45,15 +45,31 @@ const VaultControlPanel = () => {
 
   const fetchData = useCallback(async () => {
     try {
-      const res = await fetch("/api/orders");
+      // Use no-cache to force fresh data from Supabase
+      const res = await fetch("/api/orders", {
+        headers: { 'Cache-Control': 'no-cache' }
+      });
       if (res.ok) {
         const data = await res.json();
-        // Pending: Only BUYs that need Vault to send assets back
-        setPendingOrders(data.filter((o: any) => o.status === 'pending' && o.side === 'buy'));
-        // History: Sorted by most recent first
-        setHistoryOrders(data.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
+        console.log("Admin Data Received:", data);
+        
+        const pending = [];
+        const history = [];
+        
+        for (const o of data) {
+          if (o.status === 'pending' && o.side === 'buy') {
+            pending.push(o);
+          } else {
+            history.push(o);
+          }
+        }
+        
+        setPendingOrders(pending);
+        setHistoryOrders(history);
       }
-    } catch (err) {}
+    } catch (err) {
+      console.error("Admin Fetch Error:", err);
+    }
   }, []);
 
   useEffect(() => {
