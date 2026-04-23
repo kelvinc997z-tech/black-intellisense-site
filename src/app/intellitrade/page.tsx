@@ -65,6 +65,33 @@ const IntelliTradeV6 = () => {
     return () => clearInterval(interval);
   }, []);
 
+  useEffect(() => {
+    const handleChainChanged = (id: string) => setChainId(parseInt(id, 16));
+    const handleAccountsChanged = (accs: string[]) => setAccount(accs[0] || null);
+
+    if (window.ethereum) {
+      window.ethereum.on('chainChanged', handleChainChanged);
+      window.ethereum.on('accountsChanged', handleAccountsChanged);
+      
+      // Auto-detect if already connected
+      window.ethereum.request({ method: 'eth_accounts' }).then((accs: string[]) => {
+        if (accs.length > 0) {
+          setAccount(accs[0]);
+          window.ethereum.request({ method: 'eth_chainId' }).then((id: string) => {
+            setChainId(parseInt(id, 16));
+          });
+        }
+      });
+    }
+
+    return () => {
+      if (window.ethereum?.removeListener) {
+        window.ethereum.removeListener('chainChanged', handleChainChanged);
+        window.ethereum.removeListener('accountsChanged', handleAccountsChanged);
+      }
+    };
+  }, []);
+
   const connectWallet = async () => {
     if (typeof window === 'undefined' || !window.ethereum) return toast.error("Install MetaMask");
     try {
@@ -203,8 +230,13 @@ const IntelliTradeV6 = () => {
             <button onClick={() => setView('terminal')} className={`px-6 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${view === 'terminal' ? 'bg-blue-600 text-white' : 'text-zinc-500'}`}>Terminal</button>
             <button onClick={() => setView('reports')} className={`px-6 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${view === 'reports' ? 'bg-blue-600 text-white' : 'text-zinc-500'}`}>Reports</button>
           </nav>
-          <button onClick={connectWallet} className="px-8 py-3 bg-zinc-900 border border-white/10 text-[10px] font-black tracking-widest uppercase hover:bg-white hover:text-black transition-all">
-            {account ? `KYB: ${account.slice(0,8)}...` : "VERIFY ENTITY"}
+          <button onClick={connectWallet} className="px-8 py-3 bg-zinc-900 border border-white/10 text-[10px] font-black tracking-widest uppercase hover:bg-white hover:text-black transition-all flex flex-col items-center gap-1">
+            <span>{account ? `KYB: ${account.slice(0,8)}...` : "VERIFY ENTITY"}</span>
+            {account && chainId && (
+              <span className="text-[8px] text-blue-500 font-bold border-t border-white/5 pt-1 w-full text-center">
+                NETWORK: {CHAINS[chainId]?.name || `ID ${chainId}`}
+              </span>
+            )}
           </button>
         </header>
 
