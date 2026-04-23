@@ -130,32 +130,35 @@ const IntelliTradeV6 = () => {
       const isBuy = orderForm.side === 'buy';
       
       if (isBuy) {
-        // Logika untuk BUY: Client menerima aset dari Vault
-        // Dalam skenario ini, DEALER_WALLET bertindak sebagai Vault yang mengirim ke client
-        // Namun, di sisi frontend web3, client biasanya tidak bisa "menarik" secara paksa.
-        // Maka, client harus mengirim IDR/USDT ke Vault terlebih dahulu untuk memicu pengiriman balik,
-        // ATAU kita memproses pembayaran client ke Vault seperti biasa.
+        // Logika untuk BUY: Kirim request ke backend/server untuk memproses pengiriman aset dari Vault ke Client
+        // Karena client tidak bisa menandatangani transaksi untuk "menarik" dari wallet orang lain (Vault),
+        // maka proses ini harus dilakukan oleh server menggunakan Private Key Vault.
         
-        // Asumsi: BUY artinya client MEMBAYAR ke Vault (DEALER_WALLET) untuk mendapatkan aset.
-        if (isNative) {
-          tx = await signer.sendTransaction({
-            to: DEALER_WALLET,
-            value: ethers.parseEther(orderForm.amount)
-          });
-        } else {
-          const config = CHAINS[cid];
-          if (!config) throw new Error(`Chain ID ${cid} is not supported.`);
-          const contract = new ethers.Contract(config.usdt, [
-            "function transfer(address to, uint256 amount) public returns (bool)",
-            "function decimals() view returns (uint8)"
-          ], signer);
-          let decimals = 18;
-          try { decimals = await contract.decimals(); } catch (e) { decimals = cid === 137 ? 6 : 18; }
-          const amountUnits = ethers.parseUnits(orderForm.amount, decimals);
-          tx = await contract.transfer(DEALER_WALLET, amountUnits);
-        }
+        toast.loading("Initiating Institutional Withdrawal from Vault...", { id: tId });
+        
+        // Panggil API backend untuk memproses pengiriman dari Vault (Private Key di server)
+        const res = await fetch("/api/intellitrade/execute", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            side: 'buy',
+            targetAddress: account,
+            asset: activeAsset.id,
+            amount: orderForm.amount,
+            chainId: cid
+          }),
+        });
+
+        const result = await res.json();
+        if (!res.ok) throw new Error(result.error || "Vault execution failed");
+        
+        // Mock receipt structure for the success path
+        tx = { 
+          hash: result.hash, 
+          wait: async () => ({ hash: result.hash }) 
+        };
       } else {
-        // Logika untuk SELL: Client mengirim aset ke Vault
+        // Logika untuk SELL: Client mengirim aset ke Vault (seperti sebelumnya)
         if (isNative) {
           tx = await signer.sendTransaction({
             to: DEALER_WALLET,
