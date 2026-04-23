@@ -137,6 +137,8 @@ const IntelliTradeV6 = () => {
 
   const handleExecute = async (e: React.FormEvent) => {
     e.preventDefault();
+    console.log("Execute Triggered", { account, amount: orderForm.amount, side: orderForm.side });
+    
     if (!account) return toast.error("Connect Wallet First");
     if (!orderForm.amount || parseFloat(orderForm.amount) <= 0) return toast.error("Input Valid Amount");
 
@@ -147,23 +149,29 @@ const IntelliTradeV6 = () => {
       if (isBuy) {
         const tId = toast.loading("Submitting Institutional Buy Request...");
         
-        // SAVE TO DATABASE
+        const orderData = {
+          targetAddress: account.toLowerCase(),
+          asset: activeAsset.id,
+          amount: orderForm.amount,
+          price: currentPrice,
+          side: 'buy',
+          chainId: chainId || 56
+        };
+
+        console.log("Sending order data to API:", orderData);
+
         const res = await fetch("/api/orders", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            targetAddress: account,
-            asset: activeAsset.id,
-            amount: orderForm.amount,
-            price: currentPrice,
-            side: 'buy',
-            chainId: chainId
-          }),
+          body: JSON.stringify(orderData),
         });
 
-        if (!res.ok) throw new Error("Database error");
+        const result = await res.json();
+        console.log("API Response:", result);
 
-        toast.success("Request Submitted. Awaiting Admin Approval.", { id: tId });
+        if (!res.ok) throw new Error(result.error || "Database sync failed");
+
+        toast.success("Request Submitted Successfully", { id: tId });
         setOrderForm(prev => ({ ...prev, amount: '' }));
         refreshData();
       } else {
