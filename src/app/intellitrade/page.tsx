@@ -61,10 +61,16 @@ const IntelliTradeV6 = () => {
       const res = await fetch(`/api/orders${isAdmin ? '' : `?address=${account}`}`);
       if (res.ok) {
         const data = await res.json();
-        setPendingOrders(data.filter((o: any) => o.status === 'pending'));
-        setHistory(data.filter((o: any) => o.status !== 'pending'));
+        // Separate pending and completed orders
+        const pending = data.filter((o: any) => o.status === 'pending');
+        const completed = data.filter((o: any) => o.status !== 'pending');
+        
+        setPendingOrders(pending);
+        setHistory(completed);
       }
-    } catch (err) {}
+    } catch (err) {
+      console.error("Fetch Error:", err);
+    }
   }, [account, isAdmin]);
 
   useEffect(() => {
