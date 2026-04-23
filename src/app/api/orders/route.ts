@@ -31,7 +31,9 @@ export async function POST(request: NextRequest) {
         price: parseFloat(body.price),
         side: body.side,
         chainId: body.chainId || 56,
-        status: "pending"
+        status: body.status || "pending",
+        paymentHash: body.paymentHash || null,
+        txHash: body.txHash || null
       },
     });
     

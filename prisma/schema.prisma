@@ -15,7 +15,8 @@ model Order {
   price           Float
   side            String   // "buy" | "sell"
   status          String   @default("pending") // "pending" | "approved" | "rejected"
-  txHash          String?
+  txHash          String?  // The transaction hash of the final step
+  paymentHash     String?  // The transaction hash of the initial payment (Step 1)
   chainId         Int?
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
