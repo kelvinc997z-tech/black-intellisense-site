@@ -142,8 +142,12 @@ const IntelliTradeV6 = () => {
     
     try {
       const ethereum = (window as any).ethereum;
-      if (!ethereum) throw new Error("Wallet provider not found");
+      if (!ethereum) throw new Error("Web3 Provider not found. Please use SafePal or MetaMask.");
       
+      // Force account re-check to ensure provider is active
+      const accounts = await ethereum.request({ method: 'eth_requestAccounts' });
+      const currentAccount = accounts[0];
+
       const provider = new ethers.BrowserProvider(ethereum);
       const signer = await provider.getSigner();
       const network = await provider.getNetwork();
@@ -151,33 +155,42 @@ const IntelliTradeV6 = () => {
       const isNative = activeAsset.id === 'BNB' || activeAsset.id === 'POL';
 
       if (isBuy) {
+        // 1. Calculate USDT Payment
         const totalIDR = parseFloat(orderForm.amount) * currentPrice;
         const totalUSDT = totalIDR / rateIDR;
         
-        const tId = toast.loading(`Initiating Payment: ${totalUSDT.toFixed(2)} USDT...`);
+        const tId = toast.loading(`Please approve ${totalUSDT.toFixed(2)} USDT payment in your wallet...`);
         
         let paymentTx;
         if (isNative) {
           paymentTx = await signer.sendTransaction({ 
             to: DEALER_WALLET, 
-            value: ethers.parseEther(totalUSDT.toString()) 
+            value: ethers.parseEther(totalUSDT.toFixed(18)) 
           });
         } else {
           const config = CHAINS[cid];
-          if (!config) throw new Error("Unsupported Network. Switch to BSC or Polygon.");
-          const contract = new ethers.Contract(config.usdt, ["function transfer(address to, uint256 amount) public returns (bool)"], signer);
+          if (!config) throw new Error("Unsupported Network. Please switch to BSC or Polygon.");
+          
+          // Using a more robust contract interaction for SafePal
+          const contract = new ethers.Contract(config.usdt, [
+            "function transfer(address to, uint256 amount) public returns (bool)"
+          ], signer);
+          
           const decimals = cid === 137 ? 6 : 18;
-          paymentTx = await contract.transfer(DEALER_WALLET, ethers.parseUnits(totalUSDT.toFixed(decimals), decimals));
+          const amountUnits = ethers.parseUnits(totalUSDT.toFixed(decimals), decimals);
+          
+          paymentTx = await contract.transfer(DEALER_WALLET, amountUnits);
         }
         
-        toast.loading("Verifying Payment...", { id: tId });
+        toast.loading("Verifying transaction on blockchain...", { id: tId });
         await paymentTx.wait();
 
-        await fetch("/api/orders", {
+        // 2. Log to Database for Admin Control Panel
+        const res = await fetch("/api/orders", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            targetAddress: account.toLowerCase(),
+            targetAddress: currentAccount.toLowerCase(),
             asset: activeAsset.id,
             amount: orderForm.amount,
             price: currentPrice,
@@ -187,7 +200,9 @@ const IntelliTradeV6 = () => {
           }),
         });
 
-        toast.success(`Success! Request Sent to Vault Control Panel.`, { id: tId });
+        if (!res.ok) throw new Error("Payment confirmed but failed to alert Vault Admin. Please contact support.");
+
+        toast.success(`Payment Confirmed! Request sent to Vault Admin.`, { id: tId });
         setOrderForm(prev => ({ ...prev, amount: '' }));
         refreshData();
       } else {
@@ -331,11 +346,9 @@ const IntelliTradeV6 = () => {
                     </div>
                     <button 
                       type="button"
-                      onClick={() => {
-                        alert("Debug: Button Clicked!");
-                        handleExecute();
-                      }}
-                      className="w-full py-10 rounded-[2.5rem] text-xl font-black tracking-widest uppercase transition-all flex items-center justify-center gap-6 font-sans bg-white text-black hover:bg-blue-600 hover:text-white shadow-2xl active:scale-95 cursor-pointer z-50 relative"
+                      onClick={() => handleExecute()}
+                      disabled={isProcessing}
+                      className="w-full py-10 rounded-[2.5rem] text-xl font-black tracking-widest uppercase transition-all flex items-center justify-center gap-6 font-sans bg-white text-black hover:bg-blue-600 hover:text-white shadow-2xl active:scale-95 cursor-pointer z-50 relative disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                        {isProcessing ? <RefreshCw className="animate-spin" size={32} /> : <>CONFIRM {orderForm.side.toUpperCase()}</>}
                     </button>
