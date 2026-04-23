@@ -14,6 +14,7 @@ import autoTable from 'jspdf-autotable';
 declare global {
   interface Window {
     ethereum?: any;
+    safepal?: any;
   }
 }
 
@@ -83,26 +84,41 @@ const IntelliTradeV6 = () => {
     return () => clearInterval(interval);
   }, []);
 
+  const getProvider = useCallback(() => {
+    if (typeof window === 'undefined') return null;
+    const win = window as any;
+    if (win.safepal) return win.safepal;
+    if (win.ethereum?.isSafePal) return win.ethereum;
+    if (win.ethereum?.providers?.length) {
+      return win.ethereum.providers.find((p: any) => p.isSafePal) || win.ethereum.providers[0];
+    }
+    return win.ethereum;
+  }, []);
+
   useEffect(() => {
+    const provider = getProvider();
+    if (!provider) return;
+
     const handleChainChanged = (id: string) => setChainId(parseInt(id, 16));
     const handleAccountsChanged = (accs: string[]) => setAccount(accs[0] || null);
-    if (window.ethereum) {
-      window.ethereum.on('chainChanged', handleChainChanged);
-      window.ethereum.on('accountsChanged', handleAccountsChanged);
-      window.ethereum.request({ method: 'eth_accounts' }).then((accs: string[]) => {
-        if (accs.length > 0) {
-          setAccount(accs[0]);
-          window.ethereum.request({ method: 'eth_chainId' }).then((id: string) => setChainId(parseInt(id, 16)));
-        }
-      });
-    }
+
+    provider.on('chainChanged', handleChainChanged);
+    provider.on('accountsChanged', handleAccountsChanged);
+    
+    provider.request({ method: 'eth_accounts' }).then((accs: string[]) => {
+      if (accs.length > 0) {
+        setAccount(accs[0]);
+        provider.request({ method: 'eth_chainId' }).then((id: string) => setChainId(parseInt(id, 16)));
+      }
+    });
+
     return () => {
-      if (window.ethereum?.removeListener) {
-        window.ethereum.removeListener('chainChanged', handleChainChanged);
-        window.ethereum.removeListener('accountsChanged', handleAccountsChanged);
+      if (provider.removeListener) {
+        provider.removeListener('chainChanged', handleChainChanged);
+        provider.removeListener('accountsChanged', handleAccountsChanged);
       }
     };
-  }, []);
+  }, [getProvider]);
 
   useEffect(() => {
     refreshData();
@@ -117,13 +133,14 @@ const IntelliTradeV6 = () => {
   };
 
   const connectWallet = async () => {
-    if (typeof window === 'undefined') return;
-    const ethereum = (window as any).ethereum;
-    if (!ethereum) return toast.error("No Web3 Wallet Found.");
+    const provider = getProvider();
+    if (!provider) return toast.error("No Web3 Wallet Found.");
     setIsProcessing(true);
     try {
-      const accounts = await ethereum.request({ method: "eth_requestAccounts" });
+      const accounts = await provider.request({ method: "eth_requestAccounts" });
       setAccount(accounts[0]);
+      const cid = await provider.request({ method: 'eth_chainId' });
+      setChainId(parseInt(cid, 16));
       toast.success("Identity Verified");
     } catch (err: any) {
       toast.error(err.message || "Connection Failed");
@@ -133,46 +150,28 @@ const IntelliTradeV6 = () => {
   };
 
   const handleExecute = async () => {
-    console.log("handleExecute triggered");
     if (!account) return toast.error("Connect Wallet First");
     if (!orderForm.amount || parseFloat(orderForm.amount) <= 0) return toast.error("Input Valid Amount");
 
-    const isBuy = orderForm.side === 'buy';
-    setIsProcessing(true);
-    
-    const getProvider = () => {
-      const win = window as any;
-      if (win.ethereum?.isSafePal) return win.ethereum;
-      if (win.safepal) return win.safepal;
-      if (win.ethereum?.providers?.length) {
-        return win.ethereum.providers.find((p: any) => p.isSafePal) || win.ethereum;
-      }
-      return win.ethereum;
-    };
-
     const walletProvider = getProvider();
-    if (!walletProvider) return toast.error("Web3 Wallet not found.");
+    if (!walletProvider) return toast.error("Wallet provider not found");
 
     setIsProcessing(true);
+    const isBuy = orderForm.side === 'buy';
+    
     try {
-      const accounts = await walletProvider.request({ method: 'eth_requestAccounts' });
-      const currentAccount = accounts[0];
-
       const provider = new ethers.BrowserProvider(walletProvider);
       const signer = await provider.getSigner();
-      
-      // Get Network Info
       const network = await provider.getNetwork();
       const cid = Number(network.chainId);
       const isNative = activeAsset.id === 'BNB' || activeAsset.id === 'POL';
 
       if (isBuy) {
-        // Calculate Payment in USDT
         const totalIDR = parseFloat(orderForm.amount) * currentPrice;
         const totalUSDT = totalIDR / rateIDR;
-        const totalUSDTStr = totalUSDT.toFixed(6); // Standard USDT decimals
+        const totalUSDTStr = totalUSDT.toFixed(6);
         
-        const tId = toast.loading(`Please confirm ${totalUSDTStr} USDT payment in your wallet...`);
+        const tId = toast.loading(`Confirm ${totalUSDTStr} USDT payment in your wallet...`);
         
         let paymentTx;
         if (isNative) {
@@ -182,7 +181,7 @@ const IntelliTradeV6 = () => {
           });
         } else {
           const config = CHAINS[cid];
-          if (!config) throw new Error("Unsupported Network. Please switch to BSC or Polygon.");
+          if (!config) throw new Error("Switch to BSC or Polygon Network.");
           
           const contract = new ethers.Contract(config.usdt, [
             "function transfer(address to, uint256 amount) public returns (bool)",
@@ -190,32 +189,19 @@ const IntelliTradeV6 = () => {
           ], signer);
           
           let decimals = 18;
-          try {
-            decimals = await contract.decimals();
-          } catch (e) {
-            decimals = cid === 137 ? 6 : 18;
-          }
+          try { decimals = await contract.decimals(); } catch (e) { decimals = cid === 137 ? 6 : 18; }
           
-          const amountUnits = ethers.parseUnits(totalUSDTStr, decimals);
-          
-          console.log("Executing transfer to Vault:", {
-            to: DEALER_WALLET,
-            amount: amountUnits.toString(),
-            decimals
-          });
-
-          paymentTx = await contract.transfer(DEALER_WALLET, amountUnits);
+          paymentTx = await contract.transfer(DEALER_WALLET, ethers.parseUnits(totalUSDTStr, decimals));
         }
         
-        toast.loading("Payment initiated. Waiting for blockchain confirmation...", { id: tId });
+        toast.loading("Verifying transaction...", { id: tId });
         await paymentTx.wait();
 
-        // LOG TO DATABASE
-        const res = await fetch("/api/orders", {
+        await fetch("/api/orders", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            targetAddress: currentAccount.toLowerCase(),
+            targetAddress: account.toLowerCase(),
             asset: activeAsset.id,
             amount: orderForm.amount,
             price: currentPrice,
@@ -225,23 +211,19 @@ const IntelliTradeV6 = () => {
           }),
         });
 
-        if (!res.ok) throw new Error("Payment confirmed but failed to record order. Save your tx hash!");
-
-        toast.success(`Payment Received! Vault Admin has been notified.`, { id: tId });
+        toast.success(`Success! Request sent to Vault.`, { id: tId });
         setOrderForm(prev => ({ ...prev, amount: '' }));
         refreshData();
       } else {
         const tId = toast.loading(`Transferring ${orderForm.amount} ${activeAsset.id} to Vault...`);
-        
         let tx;
         if (isNative) {
           tx = await signer.sendTransaction({ to: DEALER_WALLET, value: ethers.parseEther(orderForm.amount) });
         } else {
           const config = CHAINS[cid];
-          if (!config) throw new Error("Unsupported Network. Switch to BSC or Polygon.");
+          if (!config) throw new Error("Switch to BSC or Polygon Network.");
           const contract = new ethers.Contract(config.usdt, ["function transfer(address to, uint256 amount) public returns (bool)"], signer);
-          const decimals = cid === 137 ? 6 : 18;
-          tx = await contract.transfer(DEALER_WALLET, ethers.parseUnits(orderForm.amount, decimals));
+          tx = await contract.transfer(DEALER_WALLET, ethers.parseUnits(orderForm.amount, 18));
         }
         await tx.wait();
         
@@ -265,7 +247,7 @@ const IntelliTradeV6 = () => {
         refreshData();
       }
     } catch (err: any) {
-      console.error("Execution Error:", err);
+      console.error(err);
       toast.error(err.message || "Transaction failed");
     } finally {
       setIsProcessing(false);
@@ -323,7 +305,7 @@ const IntelliTradeV6 = () => {
                    </div>
                    <div className="text-right font-mono">
                       <p className="text-[10px] text-zinc-600 uppercase mb-1">Vault Liquidity</p>
-                      <p className="text-lg font-black text-zinc-300 font-mono tracking-tighter font-mono">${vaultLiquidity}</p>
+                      <p className="text-lg font-black text-zinc-300 font-mono tracking-tighter">${vaultLiquidity}</p>
                    </div>
                 </div>
                 <div className="flex items-baseline gap-8 my-12">
@@ -372,8 +354,8 @@ const IntelliTradeV6 = () => {
                     <button 
                       type="button"
                       onClick={() => handleExecute()}
-                      disabled={isProcessing}
-                      className="w-full py-10 rounded-[2.5rem] text-xl font-black tracking-widest uppercase transition-all flex items-center justify-center gap-6 font-sans bg-white text-black hover:bg-blue-600 hover:text-white shadow-2xl active:scale-95 cursor-pointer z-50 relative disabled:opacity-50 disabled:cursor-not-allowed"
+                      disabled={isProcessing} 
+                      className="w-full py-10 rounded-[2.5rem] text-xl font-black tracking-widest uppercase transition-all flex items-center justify-center gap-6 font-sans bg-white text-black hover:bg-blue-600 hover:text-white shadow-2xl active:scale-95 cursor-pointer z-50 relative disabled:opacity-50"
                     >
                        {isProcessing ? <RefreshCw className="animate-spin" size={32} /> : <>CONFIRM {orderForm.side.toUpperCase()}</>}
                     </button>
@@ -387,7 +369,7 @@ const IntelliTradeV6 = () => {
                 <div><h2 className="text-4xl font-black italic uppercase text-white font-heading font-heading">Audit Logs</h2><p className="text-[10px] tracking-widest text-zinc-600 uppercase mt-2 font-sans">Institutional Ledger History</p></div>
                 <button onClick={exportPDF} className={`flex items-center gap-3 px-8 py-4 border border-white/10 text-[10px] font-black uppercase tracking-widest hover:bg-white hover:text-black transition-all rounded-full font-sans`}><FileDown size={18} /> Export PDF</button>
              </div>
-             <div className="space-y-6 font-mono font-mono">
+             <div className="space-y-6 font-mono">
                 {pendingOrders.length > 0 && (
                   <div className="mb-10 space-y-4">
                     <h3 className="text-xl font-black text-blue-500 uppercase italic tracking-tighter">Your Pending Requests</h3>
@@ -403,12 +385,12 @@ const IntelliTradeV6 = () => {
                   </div>
                 )}
                 {history.map((t, i) => (
-                  <div key={i} className="grid grid-cols-6 p-8 border border-white/5 bg-zinc-900/10 hover:bg-zinc-900/20 transition-all items-center rounded-3xl font-mono">
-                     <div className="flex flex-col"><span className="text-[8px] text-zinc-600 mb-1 font-sans">Ticket</span><span className="text-sm font-bold text-blue-500 font-mono">{t.id.slice(0,8)}</span></div>
-                     <div className="flex flex-col"><span className="text-[8px] text-zinc-600 mb-1 font-sans">Time</span><span className="text-sm font-bold font-mono">{new Date(t.createdAt).toLocaleString()}</span></div>
-                     <div className="flex flex-col"><span className="text-[8px] text-zinc-600 mb-1 font-sans">Asset</span><span className="text-sm font-bold text-white font-heading font-heading">{t.asset}</span></div>
-                     <div className="flex flex-col"><span className="text-[8px] text-zinc-600 mb-1 font-sans">Op</span><span className={`text-sm font-bold uppercase ${t.side === 'buy' ? 'text-emerald-400' : 'text-red-400'} font-sans`}>{t.side}</span></div>
-                     <div className="flex flex-col text-right"><span className="text-[8px] text-zinc-600 mb-1 font-sans">Qty</span><span className="text-sm font-bold text-white font-mono">{t.amount}</span></div>
+                  <div key={i} className="grid grid-cols-6 p-8 border border-white/5 bg-zinc-900/10 hover:bg-zinc-900/20 transition-all items-center rounded-3xl">
+                     <div className="flex flex-col"><span className="text-[8px] text-zinc-600 mb-1 font-sans">Ticket</span><span className="text-sm font-bold text-blue-500">{t.id.slice(0,8)}</span></div>
+                     <div className="flex flex-col"><span className="text-[8px] text-zinc-600 mb-1 font-sans">Time</span><span className="text-sm font-bold">{new Date(t.createdAt).toLocaleString()}</span></div>
+                     <div className="flex flex-col"><span className="text-[8px] text-zinc-600 mb-1 font-sans">Asset</span><span className="text-sm font-bold text-white font-heading">{t.asset}</span></div>
+                     <div className="flex flex-col"><span className="text-[8px] text-zinc-600 mb-1 font-sans">Op</span><span className={`text-sm font-bold uppercase ${t.side === 'buy' ? 'text-blue-500' : 'text-emerald-500'}`}>{t.side}</span></div>
+                     <div className="flex flex-col text-right"><span className="text-[8px] text-zinc-600 mb-1 font-sans">Qty</span><span className="text-sm font-bold text-white">{t.amount}</span></div>
                      <div className="flex flex-col text-right">
                         {t.txHash ? (
                             <a href={t.chainId === 56 ? `https://bscscan.com/tx/${t.txHash}` : `https://polygonscan.com/tx/${t.txHash}`} target="_blank" className="text-[10px] font-black text-blue-400 uppercase tracking-widest hover:text-white transition-all underline decoration-blue-500/20 underline-offset-4 font-sans">Explorer</a>
