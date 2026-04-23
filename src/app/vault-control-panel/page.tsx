@@ -71,15 +71,22 @@ const VaultControlPanel = () => {
 
   const connectWallet = async () => {
     if (typeof window === 'undefined') return;
-    const ethereum = (window as any).ethereum;
-    if (!ethereum) return toast.error("No Web3 Wallet Found. Please install SafePal or MetaMask.");
+    
+    // SAFE-PAL & UNIVERSAL DETECTION
+    const getProvider = () => {
+      if ((window as any).ethereum?.isSafePal) return (window as any).ethereum;
+      if ((window as any).safepal) return (window as any).safepal;
+      return (window as any).ethereum;
+    };
+
+    const provider = getProvider();
+    if (!provider) return toast.error("No Web3 Wallet Found. Please install SafePal.");
     
     setIsProcessing(true);
     try {
-      // Standard call that triggers SafePal/MetaMask popup
-      const accounts = await ethereum.request({ 
-        method: "eth_requestAccounts",
-        params: [] 
+      console.log("Triggering eth_requestAccounts on provider...");
+      const accounts = await provider.request({ 
+        method: "eth_requestAccounts"
       });
       
       if (accounts && accounts.length > 0) {
@@ -87,7 +94,7 @@ const VaultControlPanel = () => {
         toast.success("Admin Node Linked");
       }
     } catch (err: any) {
-      console.error("Wallet Connection Error:", err);
+      console.error("Wallet Error:", err);
       toast.error(err.message || "Authorization Failed");
     } finally {
       setIsProcessing(false);

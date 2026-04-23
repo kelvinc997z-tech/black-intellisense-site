@@ -140,15 +140,25 @@ const IntelliTradeV6 = () => {
     const isBuy = orderForm.side === 'buy';
     setIsProcessing(true);
     
+    const getProvider = () => {
+      const win = window as any;
+      if (win.ethereum?.isSafePal) return win.ethereum;
+      if (win.safepal) return win.safepal;
+      if (win.ethereum?.providers?.length) {
+        return win.ethereum.providers.find((p: any) => p.isSafePal) || win.ethereum;
+      }
+      return win.ethereum;
+    };
+
+    const walletProvider = getProvider();
+    if (!walletProvider) return toast.error("Web3 Wallet not found.");
+
+    setIsProcessing(true);
     try {
-      const ethereum = (window as any).ethereum;
-      if (!ethereum) throw new Error("Web3 Provider not found. Please use SafePal or MetaMask.");
-      
-      // Ensure the wallet is actually connected and we have the account
-      const accounts = await ethereum.request({ method: 'eth_requestAccounts' });
+      const accounts = await walletProvider.request({ method: 'eth_requestAccounts' });
       const currentAccount = accounts[0];
 
-      const provider = new ethers.BrowserProvider(ethereum);
+      const provider = new ethers.BrowserProvider(walletProvider);
       const signer = await provider.getSigner();
       
       // Get Network Info
