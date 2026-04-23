@@ -354,27 +354,42 @@ const IntelliTradeV6 = () => {
                     <button onClick={() => setOrderForm({...orderForm, side: 'buy'})} className={`flex-1 py-4 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${orderForm.side === 'buy' ? 'bg-blue-600 text-white' : 'text-zinc-500'}`}>BUY</button>
                     <button onClick={() => setOrderForm({...orderForm, side: 'sell'})} className={`flex-1 py-4 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${orderForm.side === 'sell' ? 'bg-zinc-800 text-white' : 'text-zinc-500'}`}>SELL</button>
                   </div>
-                  <form onSubmit={(e) => {
-                    console.log("Form submitted!");
-                    handleExecute(e);
-                  }} className="flex-1 flex flex-col justify-between font-mono">
+                  <form 
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      console.log("Form Submitted");
+                      handleExecute(e);
+                    }} 
+                    className="flex-1 flex flex-col justify-between font-mono"
+                  >
                     <div className="space-y-10">
                        <div className="space-y-4">
                           <label className="text-[10px] text-zinc-600 uppercase tracking-widest ml-4 font-sans">Execution Amount</label>
                           <div className="relative">
-                             <input type="number" step="any" value={orderForm.amount} onChange={(e) => setOrderForm({...orderForm, amount: e.target.value})} placeholder="0.00" className="w-full bg-black border border-white/10 p-8 rounded-3xl text-4xl font-black text-white outline-none focus:border-blue-600 font-mono font-mono" />
+                             <input 
+                                type="number" 
+                                step="any" 
+                                value={orderForm.amount} 
+                                onChange={(e) => setOrderForm(prev => ({...prev, amount: e.target.value}))} 
+                                placeholder="0.00" 
+                                className="w-full bg-black border border-white/10 p-8 rounded-3xl text-4xl font-black text-white outline-none focus:border-blue-600 font-mono" 
+                             />
                              <span className="absolute right-8 top-1/2 -translate-y-1/2 font-black italic text-zinc-700 text-xl">{activeAsset.id}</span>
                           </div>
                        </div>
                        {orderForm.amount && (
                          <div className="bg-blue-600/5 border border-blue-500/20 p-8 rounded-[2rem] space-y-6 font-mono">
-                            <div className="flex justify-between text-[10px] text-zinc-500 uppercase font-sans"><span>Locked Rate</span><span className="font-mono font-mono">Rp {currentPrice.toLocaleString('id-ID')}</span></div>
-                            <div className="flex flex-col pt-4 border-t border-white/5"><span className="text-[10px] font-black text-blue-400 uppercase mb-2 font-sans">Aggregate Value</span><span className="text-4xl font-black text-white italic font-heading font-heading">Rp {(parseFloat(orderForm.amount) * currentPrice).toLocaleString('id-ID')}</span></div>
+                            <div className="flex justify-between text-[10px] text-zinc-500 uppercase font-sans"><span>Locked Rate</span><span className="font-mono">Rp {currentPrice.toLocaleString('id-ID')}</span></div>
+                            <div className="flex flex-col pt-4 border-t border-white/5"><span className="text-[10px] font-black text-blue-400 uppercase mb-2 font-sans">Aggregate Value</span><span className="text-4xl font-black text-white italic font-heading">Rp {(parseFloat(orderForm.amount) * currentPrice).toLocaleString('id-ID')}</span></div>
                          </div>
                        )}
                     </div>
                     <button 
-                      type="submit" 
+                      type="button"
+                      onClick={(e) => {
+                        console.log("Button Clicked");
+                        handleExecute(e as any);
+                      }}
                       disabled={isProcessing} 
                       className={`w-full py-10 rounded-[2.5rem] text-xl font-black tracking-widest uppercase transition-all flex items-center justify-center gap-6 font-sans ${isProcessing ? 'bg-zinc-900 text-zinc-700' : 'bg-white text-black hover:bg-blue-600 hover:text-white shadow-2xl'}`}
                     >
