@@ -21,7 +21,7 @@ const VaultControlPanel = () => {
   const [pinInput, setPinInput] = useState("");
   const [isUnlocked, setIsUnlocked] = useState(false);
 
-  const ADMIN_PIN = "2026"; // Default PIN
+  const ADMIN_PIN = "872139"; // Administrative Secure PIN
 
   const isAdmin = useMemo(() => account?.toLowerCase() === DEALER_WALLET.toLowerCase(), [account]);
 
