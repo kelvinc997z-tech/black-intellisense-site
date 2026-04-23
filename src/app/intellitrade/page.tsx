@@ -331,9 +331,11 @@ const IntelliTradeV6 = () => {
                     </div>
                     <button 
                       type="button"
-                      onClick={handleExecute}
-                      disabled={isProcessing} 
-                      className={`w-full py-10 rounded-[2.5rem] text-xl font-black tracking-widest uppercase transition-all flex items-center justify-center gap-6 font-sans ${isProcessing ? 'bg-zinc-900 text-zinc-700' : 'bg-white text-black hover:bg-blue-600 hover:text-white shadow-2xl active:scale-95'}`}
+                      onClick={() => {
+                        alert("Debug: Button Clicked!");
+                        handleExecute();
+                      }}
+                      className="w-full py-10 rounded-[2.5rem] text-xl font-black tracking-widest uppercase transition-all flex items-center justify-center gap-6 font-sans bg-white text-black hover:bg-blue-600 hover:text-white shadow-2xl active:scale-95 cursor-pointer z-50 relative"
                     >
                        {isProcessing ? <RefreshCw className="animate-spin" size={32} /> : <>CONFIRM {orderForm.side.toUpperCase()}</>}
                     </button>
