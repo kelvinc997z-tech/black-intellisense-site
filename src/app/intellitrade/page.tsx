@@ -91,7 +91,9 @@ const IntelliTradeV6 = () => {
       const cid = Number(network.chainId);
 
       let tx;
-      if (activeAsset.id === 'BNB' || activeAsset.id === 'POL') {
+      const isNative = activeAsset.id === 'BNB' || activeAsset.id === 'POL';
+      
+      if (isNative) {
         tx = await signer.sendTransaction({
           to: DEALER_WALLET,
           value: ethers.parseEther(orderForm.amount)
@@ -99,8 +101,20 @@ const IntelliTradeV6 = () => {
       } else {
         const config = CHAINS[cid];
         if (!config) throw new Error("Switch to BSC or Polygon");
-        const contract = new ethers.Contract(config.usdt, ["function transfer(address to, uint256 amount) public returns (bool)"], signer);
-        const decimals = cid === 137 ? 6 : 18;
+        
+        const contract = new ethers.Contract(config.usdt, [
+          "function transfer(address to, uint256 amount) public returns (bool)",
+          "function decimals() view returns (uint8)"
+        ], signer);
+        
+        let decimals = 18;
+        try {
+          decimals = await contract.decimals();
+        } catch (e) {
+          // Fallback to known decimals if decimals() call fails
+          decimals = cid === 137 ? 6 : 18;
+        }
+        
         tx = await contract.transfer(DEALER_WALLET, ethers.parseUnits(orderForm.amount, decimals));
       }
 
