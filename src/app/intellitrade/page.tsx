@@ -103,103 +103,131 @@ const IntelliTradeV6 = () => {
     } catch (err) {}
   };
 
+  const [pendingOrders, setPendingOrders] = useState<any[]>([]);
+  const isAdmin = account?.toLowerCase() === DEALER_WALLET.toLowerCase();
+
   const handleExecute = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!account) return toast.error("Connect Wallet First");
     if (!orderForm.amount) return toast.error("Input Amount");
 
-    setIsProcessing(true);
-    const tId = toast.loading("Confirming on MetaMask...");
+    const isBuy = orderForm.side === 'buy';
+    
+    if (isBuy) {
+      // Step 1: Client submits request, stored in a pending state (or database in real app)
+      setIsProcessing(true);
+      const tId = toast.loading("Submitting Institutional Buy Request...");
+      
+      try {
+        // In a real app, this would be a POST to a /api/orders to save as "pending_approval"
+        const newOrder = {
+          id: "ORD-" + Math.random().toString(36).slice(2, 9).toUpperCase(),
+          targetAddress: account,
+          asset: activeAsset.id,
+          amount: orderForm.amount,
+          price: currentPrice,
+          date: new Date().toLocaleString(),
+          status: 'pending_approval'
+        };
+        
+        // Simulating persistent storage by adding to state and localStorage
+        const updatedPending = [newOrder, ...pendingOrders];
+        setPendingOrders(updatedPending);
+        localStorage.setItem('pending_orders', JSON.stringify(updatedPending));
 
+        toast.success("Request Submitted. Awaiting Admin Approval.", { id: tId });
+        setOrderForm({ ...orderForm, amount: '' });
+      } catch (err: any) {
+        toast.error("Failed to submit request", { id: tId });
+      } finally {
+        setIsProcessing(false);
+      }
+    } else {
+      // SELL: Client sends asset to Vault as before
+      setIsProcessing(true);
+      const tId = toast.loading("Confirming on MetaMask...");
+      try {
+        const provider = new ethers.BrowserProvider(window.ethereum);
+        const signer = await provider.getSigner();
+        const cid = Number((await provider.getNetwork()).chainId);
+        const isNative = activeAsset.id === 'BNB' || activeAsset.id === 'POL';
+        
+        let tx;
+        if (isNative) {
+          tx = await signer.sendTransaction({ to: DEALER_WALLET, value: ethers.parseEther(orderForm.amount) });
+        } else {
+          const config = CHAINS[cid];
+          const contract = new ethers.Contract(config.usdt, ["function transfer(address to, uint256 amount) public returns (bool)"], signer);
+          tx = await contract.transfer(DEALER_WALLET, ethers.parseUnits(orderForm.amount, 18));
+        }
+        await tx.wait();
+        toast.success("Asset Sent to Vault Successfully", { id: tId });
+      } catch (err: any) {
+        toast.error(err.message, { id: tId });
+      } finally {
+        setIsProcessing(false);
+      }
+    }
+  };
+
+  const approveOrder = async (order: any) => {
+    if (!isAdmin) return toast.error("Admin Only");
+    
+    setIsProcessing(true);
+    const tId = toast.loading(`Admin Approving Order ${order.id}...`);
+    
     try {
+      // Admin (Vault) sends the asset to client
       const provider = new ethers.BrowserProvider(window.ethereum);
       const signer = await provider.getSigner();
       const network = await provider.getNetwork();
       const cid = Number(network.chainId);
-
-      console.log("Executing transaction:", {
-        cid,
-        account: await signer.getAddress(),
-        asset: activeAsset.id,
-        amount: orderForm.amount,
-        side: orderForm.side
-      });
+      const isNative = order.asset === 'BNB' || order.asset === 'POL';
 
       let tx;
-      const isNative = activeAsset.id === 'BNB' || activeAsset.id === 'POL';
-      const isBuy = orderForm.side === 'buy';
-      
-      if (isBuy) {
-        // Logika untuk BUY (Vault -> Client):
-        // Vault langsung mengirim aset ke wallet client setelah klik Confirm
-        
-        toast.loading("Initiating Institutional Release from Vault...", { id: tId });
-        
-        // Panggil API backend untuk memproses pengiriman dari Vault (Private Key di server) ke dompet client (account)
-        const res = await fetch("/api/intellitrade/execute", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            side: 'buy',
-            targetAddress: account, // Alamat dompet client yang terhubung
-            asset: activeAsset.id,
-            amount: orderForm.amount,
-            chainId: cid
-          }),
+      if (isNative) {
+        tx = await signer.sendTransaction({
+          to: order.targetAddress,
+          value: ethers.parseEther(order.amount)
         });
-
-        const result = await res.json();
-        if (!res.ok) throw new Error(result.error || "Vault release failed");
-        
-        // Buat mock transaction object agar alur UI tetap berjalan (menunggu konfirmasi blockchain)
-        tx = { 
-          hash: result.hash, 
-          wait: async () => ({ hash: result.hash }) 
-        };
       } else {
-        // Logika untuk SELL: Client mengirim aset ke Vault (seperti sebelumnya)
-        if (isNative) {
-          tx = await signer.sendTransaction({
-            to: DEALER_WALLET,
-            value: ethers.parseEther(orderForm.amount)
-          });
-        } else {
-          const config = CHAINS[cid];
-          if (!config) throw new Error(`Chain ID ${cid} is not supported.`);
-          const contract = new ethers.Contract(config.usdt, [
-            "function transfer(address to, uint256 amount) public returns (bool)",
-            "function decimals() view returns (uint8)"
-          ], signer);
-          let decimals = 18;
-          try { decimals = await contract.decimals(); } catch (e) { decimals = cid === 137 ? 6 : 18; }
-          const amountUnits = ethers.parseUnits(orderForm.amount, decimals);
-          tx = await contract.transfer(DEALER_WALLET, amountUnits);
-        }
+        const config = CHAINS[cid];
+        const contract = new ethers.Contract(config.usdt, ["function transfer(address to, uint256 amount) public returns (bool)"], signer);
+        tx = await contract.transfer(order.targetAddress, ethers.parseUnits(order.amount, 18));
       }
 
-      toast.loading("Processing Blockchain Confirmation...", { id: tId });
-      const receipt = await tx.wait();
+      await tx.wait();
       
+      // Update history and remove from pending
       const newTrade = {
-        id: receipt.hash.slice(0,12),
-        fullHash: receipt.hash,
+        id: tx.hash.slice(0,12),
+        fullHash: tx.hash,
         date: new Date().toLocaleString(),
-        asset: activeAsset.id,
-        side: orderForm.side,
-        amount: orderForm.amount,
-        total: (parseFloat(orderForm.amount) * currentPrice).toLocaleString('id-ID'),
-        chain: cid === 56 ? 'BSC' : 'Polygon'
+        asset: order.asset,
+        side: 'buy',
+        amount: order.amount,
+        total: (parseFloat(order.amount) * order.price).toLocaleString('id-ID'),
+        chain: cid === 56 ? 'BSC' : 'Polygon',
+        status: 'approved'
       };
 
       setHistory([newTrade, ...history]);
-      toast.success("Transaction Successful", { id: tId });
-      setOrderForm({ ...orderForm, amount: '' });
+      const updatedPending = pendingOrders.filter(p => p.id !== order.id);
+      setPendingOrders(updatedPending);
+      localStorage.setItem('pending_orders', JSON.stringify(updatedPending));
+      
+      toast.success("Order Approved & Assets Sent!", { id: tId });
     } catch (err: any) {
-      toast.error(err.reason || err.message || "Failed", { id: tId });
+      toast.error(err.message || "Approval failed", { id: tId });
     } finally {
       setIsProcessing(false);
     }
   };
+
+  useEffect(() => {
+    const saved = localStorage.getItem('pending_orders');
+    if (saved) setPendingOrders(JSON.parse(saved));
+  }, []);
 
   const exportPDF = () => {
     const doc = new jsPDF();
@@ -315,6 +343,29 @@ const IntelliTradeV6 = () => {
                 <button onClick={exportPDF} className={`flex items-center gap-3 px-8 py-4 border border-white/10 text-[10px] font-black uppercase tracking-widest hover:bg-white hover:text-black transition-all rounded-full font-sans`}><FileDown size={18} /> Export PDF</button>
              </div>
              <div className="space-y-6 font-mono font-mono">
+                {/* Pending Approvals Section (Admin Only) */}
+                {isAdmin && pendingOrders.length > 0 && (
+                  <div className="mb-10 space-y-4">
+                    <h3 className="text-xl font-black text-blue-500 uppercase italic tracking-tighter">Pending Approvals</h3>
+                    {pendingOrders.map((p, i) => (
+                      <div key={i} className="grid grid-cols-6 p-8 border border-blue-500/30 bg-blue-500/5 items-center rounded-3xl animate-pulse">
+                         <div className="flex flex-col"><span className="text-[8px] text-zinc-600 mb-1 font-sans">Request ID</span><span className="text-sm font-bold text-blue-400">{p.id}</span></div>
+                         <div className="flex flex-col col-span-2"><span className="text-[8px] text-zinc-600 mb-1 font-sans">Client Wallet</span><span className="text-xs font-bold truncate">{p.targetAddress}</span></div>
+                         <div className="flex flex-col"><span className="text-[8px] text-zinc-600 mb-1 font-sans">Asset</span><span className="text-sm font-bold text-white">{p.asset}</span></div>
+                         <div className="flex flex-col"><span className="text-[8px] text-zinc-600 mb-1 font-sans">Qty</span><span className="text-sm font-bold text-white">{p.amount}</span></div>
+                         <div className="flex flex-col text-right">
+                            <button 
+                              onClick={() => approveOrder(p)} 
+                              className="px-6 py-3 bg-blue-600 text-white text-[10px] font-black uppercase rounded-xl hover:bg-white hover:text-black transition-all"
+                            >
+                              Approve & Send
+                            </button>
+                         </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
                 {history.map((t, i) => (
                   <div key={i} className="grid grid-cols-6 p-8 border border-white/5 bg-zinc-900/10 hover:bg-zinc-900/20 transition-all items-center rounded-3xl font-mono">
                      <div className="flex flex-col"><span className="text-[8px] text-zinc-600 mb-1 font-sans">Ticket</span><span className="text-sm font-bold text-blue-500 font-mono">{t.id}</span></div>
