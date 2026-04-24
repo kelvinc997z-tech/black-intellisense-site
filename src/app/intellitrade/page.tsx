@@ -5,7 +5,8 @@ import {
   ShoppingCart, Wallet, ArrowRightLeft, ShieldCheck, Zap, Info, 
   Activity, Cpu, Terminal, Radio, Database, BarChart3, ScanFace, 
   FileDown, LayoutGrid, ListFilter, ExternalLink, RefreshCw,
-  Globe, Lock, ShieldAlert, BadgeCheck, Bitcoin, Coins, Search
+  Globe, Lock, ShieldAlert, BadgeCheck, Bitcoin, Coins, Search,
+  ArrowDownLeft, ArrowUpRight
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { ethers } from 'ethers';
