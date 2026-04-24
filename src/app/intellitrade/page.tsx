@@ -402,10 +402,10 @@ const IntelliTradeV7 = () => {
                   </div>
 
                   <div className="pt-8 border-t border-white/[0.03] flex items-center justify-center gap-6">
-                     <ShieldAlert className="w-4 h-4 text-zinc-800" />
-                     <p className="text-[8px] text-zinc-700 font-bold uppercase text-center leading-relaxed">
+                     <ShieldAlert className="w-4 h-4 text-emerald-500" />
+                     <p className="text-[8px] text-zinc-300 font-bold uppercase text-center leading-relaxed">
                         Transaction involves direct vault interaction. <br />
-                        Authorized entities only.
+                        <span className="text-emerald-500">Authorized entities only.</span>
                      </p>
                   </div>
                </div>
