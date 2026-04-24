@@ -107,15 +107,34 @@ const IntelliTradeV7 = () => {
   useEffect(() => {
     const provider = getProvider();
     if (!provider) return;
-    provider.on('chainChanged', (id: string) => setChainId(parseInt(id, 16)));
-    provider.on('accountsChanged', (accs: string[]) => {
-       setAccount(accs[0] || null);
-       refreshData();
-    });
+
+    const handleChain = (id: string) => setChainId(parseInt(id, 16));
+    const handleAccounts = (accs: string[]) => {
+      setAccount(accs[0] || null);
+    };
+
+    provider.on('chainChanged', handleChain);
+    provider.on('accountsChanged', handleAccounts);
+
     provider.request({ method: 'eth_accounts' }).then((accs: string[]) => {
       if (accs.length > 0) setAccount(accs[0]);
     });
-  }, [getProvider, refreshData]);
+
+    return () => {
+      if (provider.removeListener) {
+        provider.removeListener('chainChanged', handleChain);
+        provider.removeListener('accountsChanged', handleAccounts);
+      }
+    };
+  }, [getProvider]);
+
+  useEffect(() => {
+    if (account) {
+      refreshData();
+      const interval = setInterval(refreshData, 5000);
+      return () => clearInterval(interval);
+    }
+  }, [account, refreshData]);
 
   const connectWallet = async () => {
     const provider = getProvider();
