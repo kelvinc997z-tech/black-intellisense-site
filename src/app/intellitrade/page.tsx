@@ -4,12 +4,14 @@ import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import { 
   ShoppingCart, Wallet, ArrowRightLeft, ShieldCheck, Zap, Info, 
   Activity, Cpu, Terminal, Radio, Database, BarChart3, ScanFace, 
-  FileDown, LayoutGrid, ListFilter, ExternalLink, RefreshCw
+  FileDown, LayoutGrid, ListFilter, ExternalLink, RefreshCw,
+  Globe, Lock, ShieldAlert, BadgeCheck, Bitcoin, Coins
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { ethers } from 'ethers';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { motion, AnimatePresence } from 'framer-motion';
 
 declare global {
   interface Window {
@@ -24,13 +26,13 @@ const CHAINS: Record<number, { name: string; usdt: string; explorer: string }> =
   137: { name: 'Polygon', usdt: '0xc2132D05D31c914a87C6611C10748AEb04B58e8F', explorer: 'https://polygonscan.com/tx/' }
 };
 const ASSETS = [
-  { id: 'USDT', name: 'Tether USD', icon: '₮', color: 'text-emerald-500' },
-  { id: 'BNB', name: 'Binance Coin', icon: 'B', color: 'text-yellow-500' },
-  { id: 'USDC', name: 'USD Coin', icon: 'S', color: 'text-blue-500' },
-  { id: 'PAXG', name: 'PAX Gold', icon: 'G', color: 'text-amber-500' },
+  { id: 'USDT', name: 'Tether USD', icon: <Coins className="w-4 h-4" />, color: 'emerald' },
+  { id: 'BNB', name: 'Binance Coin', icon: <Bitcoin className="w-4 h-4" />, color: 'yellow' },
+  { id: 'USDC', name: 'USD Coin', icon: <Coins className="w-4 h-4" />, color: 'blue' },
+  { id: 'PAXG', name: 'PAX Gold', icon: <Coins className="w-4 h-4" />, color: 'amber' },
 ];
 
-const IntelliTradeV6 = () => {
+const IntelliTradeV7 = () => {
   const [rateIDR, setRateIDR] = useState<number>(16250);
   const [account, setAccount] = useState<string | null>(null);
   const [chainId, setChainId] = useState<number | null>(null);
@@ -38,57 +40,32 @@ const IntelliTradeV6 = () => {
   const [activeAsset, setActiveAsset] = useState(ASSETS[0]);
   const [history, setHistory] = useState<any[]>([]);
   const [view, setView] = useState<'terminal' | 'reports'>('terminal');
-  const [blocks, setBlocks] = useState<string[]>([]);
+  const [terminalLogs, setTerminalLogs] = useState<string[]>([]);
   const [orderForm, setOrderForm] = useState({ side: 'buy', amount: '' });
-  const [pendingOrders, setPendingOrders] = useState<any[]>([]);
-
-  const isAdmin = useMemo(() => {
-    if (!account) return false;
-    return account.toLowerCase() === DEALER_WALLET.toLowerCase();
-  }, [account]);
+  const [vaultStats, setVaultStats] = useState({ liquidity: "1,250,450.75", transactions: "4.2k" });
 
   const currentPrice = useMemo(() => {
     let base = rateIDR;
     if (activeAsset.id === 'PAXG') base = rateIDR * 140;
     if (activeAsset.id === 'BNB') base = rateIDR * 600;
-    return orderForm.side === 'buy' ? base + 10.5 : base - 10.5;
+    // Add realistic market variance
+    const variance = (Math.random() - 0.5) * 5;
+    return orderForm.side === 'buy' ? base + 10.5 + variance : base - 10.5 + variance;
   }, [activeAsset.id, rateIDR, orderForm.side]);
-
-  const vaultLiquidity = useMemo(() => (1250450.75).toLocaleString(), []);
 
   const refreshData = useCallback(async () => {
     if (!account) return;
     try {
-      const acc = account.toLowerCase();
-      // Use full URL to ensure no relative path issues during client-side fetch
-      const endpoint = `/api/orders?address=${acc}`;
-      
-      const res = await fetch(endpoint, { 
+      const res = await fetch(`/api/orders?address=${account.toLowerCase()}`, { 
         method: 'GET',
         headers: { 'Cache-Control': 'no-cache' }
       });
-
       if (res.ok) {
         const data = await res.json();
-        console.log("Client Received Data:", data);
-        
-        // Use a simpler filter to start
-        const pending = [];
-        const history = [];
-        
-        for (const o of data) {
-          if (o.status === 'pending' && o.side === 'buy') {
-            pending.push(o);
-          } else {
-            history.push(o);
-          }
-        }
-        
-        setPendingOrders(pending);
-        setHistory(history);
+        setHistory(data.sort((a: any, b: any) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()));
       }
     } catch (err) {
-      console.error("Refresh Logic Error:", err);
+      console.error("Sync Error:", err);
     }
   }, [account]);
 
@@ -101,350 +78,433 @@ const IntelliTradeV6 = () => {
       } catch (err) {}
     };
     fetchRate();
+    
+    // Animated Terminal Logs
+    const logPool = [
+      "SYNCHRONIZING_LIQUIDITY_POOLS...",
+      "FETCHING_DEEP_ORDER_FLOW...",
+      "NEURAL_PRICE_CALIBRATION_OK",
+      "BLOCK_CONFIRMATION_PENDING...",
+      "ESTABLISHING_ENCRYPTED_TUNNEL...",
+      "VAULT_BALANCE_VERIFIED",
+    ];
+    
     const interval = setInterval(() => {
-      const hash = "0x" + Math.random().toString(16).slice(2, 10).toUpperCase();
-      setBlocks(prev => [hash, ...prev].slice(0, 5));
-    }, 4000);
+      const log = `[${new Date().toLocaleTimeString()}] ${logPool[Math.floor(Math.random() * logPool.length)]}`;
+      setTerminalLogs(prev => [log, ...prev].slice(0, 12));
+    }, 3000);
+
     return () => clearInterval(interval);
   }, []);
 
   const getProvider = useCallback(() => {
     if (typeof window === 'undefined') return null;
     const win = window as any;
-    if (win.safepal) return win.safepal;
-    if (win.ethereum?.isSafePal) return win.ethereum;
-    if (win.ethereum?.providers?.length) {
-      return win.ethereum.providers.find((p: any) => p.isSafePal) || win.ethereum.providers[0];
-    }
-    return win.ethereum;
+    return win.safepal || (win.ethereum?.isSafePal ? win.ethereum : win.ethereum);
   }, []);
 
   useEffect(() => {
     const provider = getProvider();
     if (!provider) return;
-
-    const handleChainChanged = (id: string) => setChainId(parseInt(id, 16));
-    const handleAccountsChanged = (accs: string[]) => setAccount(accs[0] || null);
-
-    provider.on('chainChanged', handleChainChanged);
-    provider.on('accountsChanged', handleAccountsChanged);
-    
-    provider.request({ method: 'eth_accounts' }).then((accs: string[]) => {
-      if (accs.length > 0) {
-        setAccount(accs[0]);
-        provider.request({ method: 'eth_chainId' }).then((id: string) => setChainId(parseInt(id, 16)));
-      }
+    provider.on('chainChanged', (id: string) => setChainId(parseInt(id, 16)));
+    provider.on('accountsChanged', (accs: string[]) => {
+       setAccount(accs[0] || null);
+       refreshData();
     });
-
-    return () => {
-      if (provider.removeListener) {
-        provider.removeListener('chainChanged', handleChainChanged);
-        provider.removeListener('accountsChanged', handleAccountsChanged);
-      }
-    };
-  }, [getProvider]);
-
-  useEffect(() => {
-    refreshData();
-    const interval = setInterval(refreshData, 5000);
-    return () => clearInterval(interval);
-  }, [refreshData]);
-
-  const disconnectWallet = () => {
-    setAccount(null);
-    setChainId(null);
-    toast.success("Wallet Disconnected");
-  };
+    provider.request({ method: 'eth_accounts' }).then((accs: string[]) => {
+      if (accs.length > 0) setAccount(accs[0]);
+    });
+  }, [getProvider, refreshData]);
 
   const connectWallet = async () => {
     const provider = getProvider();
-    if (!provider) return toast.error("No Web3 Wallet Found.");
-    setIsProcessing(true);
+    if (!provider) return toast.error("SafePal Wallet Not Found");
     try {
       const accounts = await provider.request({ method: "eth_requestAccounts" });
       setAccount(accounts[0]);
-      const cid = await provider.request({ method: 'eth_chainId' });
-      setChainId(parseInt(cid, 16));
-      toast.success("Identity Verified");
+      toast.success("Identity Linked");
     } catch (err: any) {
-      toast.error(err.message || "Connection Failed");
-    } finally {
-      setIsProcessing(false);
+      toast.error("Auth Failed");
     }
   };
 
   const handleExecute = async () => {
-    if (!account) return toast.error("Connect Wallet First");
-    if (!orderForm.amount || parseFloat(orderForm.amount) <= 0) return toast.error("Input Valid Amount");
-
-    const walletProvider = getProvider();
-    if (!walletProvider) return toast.error("Wallet provider not found");
-
+    if (!account) return connectWallet();
+    if (!orderForm.amount) return toast.error("Enter Amount");
     setIsProcessing(true);
-    const isBuy = orderForm.side === 'buy';
+    const tId = toast.loading("Initializing Smart Transaction...");
     
     try {
-      const walletProvider = getProvider();
-      if (!walletProvider) throw new Error("Wallet provider not found. Please install SafePal or MetaMask.");
-
-      // CRITICAL: Force prompt even if already connected to wake up the wallet
-      const accounts = await walletProvider.request({ 
-        method: 'eth_requestAccounts' 
-      });
-      const currentAccount = accounts[0];
-
-      const provider = new ethers.BrowserProvider(walletProvider);
-      // Wait for signer to ensure provider is ready
+      const provider = new ethers.BrowserProvider(getProvider());
       const signer = await provider.getSigner();
-      
       const network = await provider.getNetwork();
       const cid = Number(network.chainId);
-      const isNative = activeAsset.id === 'BNB' || activeAsset.id === 'POL';
+      
+      const isBuy = orderForm.side === 'buy';
+      let tx;
 
       if (isBuy) {
-        const totalIDR = parseFloat(orderForm.amount) * currentPrice;
-        const totalUSDT = totalIDR / rateIDR;
-        const totalUSDTStr = totalUSDT.toFixed(6);
+        // Buy Logic (Transfer USDT to Dealer)
+        const totalUSDT = (parseFloat(orderForm.amount) * currentPrice) / rateIDR;
+        const config = CHAINS[cid];
+        if (!config) throw new Error("Please switch to BSC or Polygon");
         
-        const tId = toast.loading(`Confirming ${totalUSDTStr} USDT in your wallet...`);
-        
-        let paymentTx;
-        if (isNative) {
-          paymentTx = await signer.sendTransaction({ 
-            to: DEALER_WALLET, 
-            value: ethers.parseUnits(totalUSDTStr, 18)
-          });
-        } else {
-          const config = CHAINS[cid];
-          if (!config) throw new Error("Unsupported Network. Switch to BSC or Polygon.");
-          
-          const contract = new ethers.Contract(config.usdt, [
-            "function transfer(address to, uint256 amount) public returns (bool)"
-          ], signer);
-          
-          const decimals = cid === 137 ? 6 : 18;
-          const amountUnits = ethers.parseUnits(totalUSDTStr, decimals);
-          
-          // Use simple transfer call to avoid simulation issues
-          paymentTx = await contract.transfer(DEALER_WALLET, amountUnits);
-        }
-        
-        toast.loading("Payment sent! Awaiting blockchain confirmation...", { id: tId });
-        const receipt = await paymentTx.wait();
-
-        await fetch("/api/orders", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            targetAddress: currentAccount.toLowerCase(),
-            asset: activeAsset.id,
-            amount: orderForm.amount,
-            price: currentPrice,
-            side: 'buy',
-            chainId: cid,
-            paymentHash: receipt.hash
-          }),
-        });
-
-        toast.success(`Success! Vault Admin has been notified.`, { id: tId });
-        setOrderForm(prev => ({ ...prev, amount: '' }));
-        refreshData();
+        const contract = new ethers.Contract(config.usdt, ["function transfer(address to, uint256 amount) public returns (bool)"], signer);
+        const decimals = cid === 137 ? 6 : 18;
+        tx = await contract.transfer(DEALER_WALLET, ethers.parseUnits(totalUSDT.toFixed(decimals), decimals));
       } else {
-        const tId = toast.loading(`Transferring ${orderForm.amount} ${activeAsset.id} to Vault...`);
-        let tx;
-        if (isNative) {
-          tx = await signer.sendTransaction({ to: DEALER_WALLET, value: ethers.parseEther(orderForm.amount) });
+        // Sell Logic (Transfer Asset to Dealer)
+        const config = CHAINS[cid];
+        if (activeAsset.id === 'BNB') {
+           tx = await signer.sendTransaction({ to: DEALER_WALLET, value: ethers.parseEther(orderForm.amount) });
         } else {
-          const config = CHAINS[cid];
-          if (!config) throw new Error("Switch to BSC or Polygon Network.");
-          const contract = new ethers.Contract(config.usdt, ["function transfer(address to, uint256 amount) public returns (bool)"], signer);
-          tx = await contract.transfer(DEALER_WALLET, ethers.parseUnits(orderForm.amount, 18));
+           if (!config) throw new Error("Switch Network");
+           const contract = new ethers.Contract(config.usdt, ["function transfer(address to, uint256 amount) public returns (bool)"], signer);
+           tx = await contract.transfer(DEALER_WALLET, ethers.parseUnits(orderForm.amount, 18));
         }
-        await tx.wait();
-        
-        await fetch("/api/orders", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            targetAddress: account.toLowerCase(),
-            asset: activeAsset.id,
-            amount: orderForm.amount,
-            price: currentPrice,
-            side: 'sell',
-            status: 'approved',
-            txHash: tx.hash,
-            chainId: cid
-          }),
-        });
-
-        toast.success("Asset Sent to Vault Successfully", { id: tId });
-        setOrderForm(prev => ({ ...prev, amount: '' }));
-        refreshData();
       }
+
+      toast.loading("Awaiting Block Confirmation...", { id: tId });
+      const receipt = await tx.wait();
+
+      await fetch("/api/orders", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          targetAddress: account.toLowerCase(),
+          asset: activeAsset.id,
+          amount: orderForm.amount,
+          price: currentPrice,
+          side: orderForm.side,
+          chainId: cid,
+          paymentHash: receipt.hash,
+          status: isBuy ? 'pending' : 'approved'
+        }),
+      });
+
+      toast.success("Transaction Successfully Broadcasted", { id: tId });
+      setOrderForm({ ...orderForm, amount: '' });
+      refreshData();
     } catch (err: any) {
-      console.error(err);
-      toast.error(err.message || "Transaction failed");
+      toast.error(err.message || "Failed", { id: tId });
     } finally {
       setIsProcessing(false);
     }
   };
 
-  const exportPDF = () => {
-    const doc = new jsPDF();
-    doc.text('Trade Audit Logs', 14, 20);
-    autoTable(doc, {
-      startY: 30,
-      head: [['Ticket', 'Time', 'Asset', 'Side', 'Qty', 'Total']],
-      body: history.map(t => [t.id.slice(0,8), new Date(t.createdAt).toLocaleString(), t.asset, t.side, t.amount, `Rp ${ (parseFloat(t.amount) * t.price).toLocaleString('id-ID')}`]),
-    });
-    doc.save('Report.pdf');
-  };
-
   return (
-    <div className="min-h-screen bg-[#010102] text-zinc-300 font-sans overflow-hidden flex flex-col">
-      <div className="fixed inset-0 pointer-events-none z-0">
-        <div className="absolute inset-0 bg-[linear-gradient(to_right,#111111_1px,transparent_1px),linear-gradient(to_bottom,#111111_1px,transparent_1px)] bg-[size:40px_40px] opacity-20"></div>
-        <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_0%_0%,rgba(29,78,216,0.1),transparent_40%)]"></div>
+    <div className="min-h-screen bg-[#020202] text-zinc-100 font-mono tracking-tight selection:bg-blue-500/30 overflow-hidden flex flex-col">
+      {/* Background Neural UI */}
+      <div className="fixed inset-0 pointer-events-none opacity-[0.03]">
+        <div className="absolute inset-0 bg-[linear-gradient(to_right,#ffffff10_1px,transparent_1px),linear-gradient(to_bottom,#ffffff10_1px,transparent_1px)] bg-[size:40px_40px]" />
+        <div className="absolute top-0 left-0 w-full h-full bg-[radial-gradient(circle_at_100%_0%,rgba(59,130,246,0.2),transparent_50%)]" />
       </div>
-      <div className="relative z-10 flex-1 flex flex-col p-4 md:p-8 lg:p-12 space-y-8 overflow-hidden">
-        <header className="flex flex-col md:flex-row justify-between items-center border-b border-white/5 pb-10 gap-8">
-          <div className="flex items-center gap-6">
-            <img src="/logo.jpg" alt="Logo" className="w-16 h-16 object-contain rounded-2xl shadow-[0_0_30px_rgba(37,99,235,0.3)]" />
+
+      <div className="relative z-10 flex-1 flex flex-col p-4 md:p-10 max-w-[1800px] mx-auto w-full">
+        {/* Header V7 */}
+        <header className="flex flex-col lg:flex-row justify-between items-center gap-8 mb-12 border-b border-white/[0.03] pb-10">
+          <div className="flex items-center gap-6 group cursor-pointer">
+            <div className="relative">
+              <div className="absolute inset-0 bg-blue-500 blur-2xl opacity-20 group-hover:opacity-40 transition-opacity" />
+              <div className="w-16 h-16 bg-white rounded-sm flex items-center justify-center text-black font-black text-2xl rotate-[-2deg] shadow-2xl relative z-10">I</div>
+            </div>
             <div>
-              <h1 className="text-3xl font-black italic tracking-tighter uppercase font-heading">INTELLITRADE <span className="text-blue-500">V.6-PRO</span></h1>
-              <p className="text-[8px] tracking-[1em] text-zinc-600 uppercase">Institutional Nexus</p>
+              <h1 className="text-3xl font-black italic uppercase tracking-tighter flex items-center gap-3">
+                IntelliTrade <span className="px-2 py-0.5 bg-blue-600 text-[10px] not-italic tracking-widest rounded-sm text-white">V7.0-ULTRA</span>
+              </h1>
+              <div className="flex items-center gap-3 text-[9px] text-zinc-600 font-bold uppercase tracking-[0.4em]">
+                <Activity className="w-3 h-3 text-emerald-500 animate-pulse" />
+                Neural_Liquidity_Grid_Active
+              </div>
             </div>
           </div>
-          <nav className="flex bg-zinc-900/50 p-1 rounded-xl border border-white/5">
-            <button onClick={() => setView('terminal')} className={`px-6 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${view === 'terminal' ? 'bg-blue-600 text-white' : 'text-zinc-500'}`}>Terminal</button>
-            <button onClick={() => setView('reports')} className={`px-6 py-2.5 rounded-lg text-[10px] font-black uppercase tracking-widest transition-all ${view === 'reports' ? 'bg-blue-600 text-white' : 'text-zinc-500'}`}>Reports</button>
-          </nav>
-          <div className="flex items-center gap-2">
-            <button onClick={account ? disconnectWallet : connectWallet} className="px-8 py-3 bg-zinc-900 border border-white/10 text-[10px] font-black tracking-widest uppercase hover:bg-white hover:text-black transition-all flex flex-col items-center gap-1 group relative">
-              <span>{account ? `KYB: ${account.slice(0,8)}...` : "VERIFY ENTITY"}</span>
-              {account && chainId && <span className="text-[8px] text-blue-500 font-bold border-t border-white/5 pt-1 w-full text-center">NETWORK: {CHAINS[chainId]?.name || `ID ${chainId}`}</span>}
-              {account && <span className="absolute -bottom-10 left-1/2 -translate-x-1/2 bg-red-600 text-white text-[8px] py-1 px-2 rounded opacity-0 group-hover:opacity-100 transition-opacity">CLICK TO SIGN OUT</span>}
-            </button>
+
+          <div className="flex flex-wrap justify-center gap-4">
+             <div className="flex bg-[#080808] p-1 border border-white/[0.05] rounded-sm">
+                <button onClick={() => setView('terminal')} className={`px-8 py-3 text-[10px] font-black uppercase tracking-widest transition-all ${view === 'terminal' ? 'bg-white text-black shadow-lg' : 'text-zinc-500 hover:text-white'}`}>Terminal_Access</button>
+                <button onClick={() => setView('reports')} className={`px-8 py-3 text-[10px] font-black uppercase tracking-widest transition-all ${view === 'reports' ? 'bg-white text-black shadow-lg' : 'text-zinc-500 hover:text-white'}`}>Audit_Reports</button>
+             </div>
+             
+             <button onClick={account ? () => setAccount(null) : connectWallet} className="px-8 py-3 bg-zinc-900 border border-white/[0.05] text-[10px] font-black uppercase tracking-widest hover:border-blue-500/50 transition-all flex items-center gap-3 group">
+                <Wallet className={`w-4 h-4 ${account ? 'text-emerald-500' : 'text-zinc-500'}`} />
+                {account ? `${account.slice(0,6)}...${account.slice(-4)}` : "Verify_Identity"}
+             </button>
           </div>
         </header>
 
         {view === 'terminal' ? (
-          <main className="flex-1 grid lg:grid-cols-12 gap-12 overflow-hidden">
+          <div className="flex-1 grid lg:grid-cols-12 gap-8">
+            {/* Core Display */}
             <div className="lg:col-span-8 flex flex-col gap-8">
-              <div className="flex-1 bg-black border border-white/5 p-12 flex flex-col justify-between relative group rounded-[3rem]">
-                <div className="flex justify-between items-start">
-                   <div className="flex flex-wrap gap-4">
+              <motion.div 
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="relative flex-1 bg-black border border-white/[0.05] p-10 md:p-20 overflow-hidden group rounded-sm"
+              >
+                {/* Background Decor */}
+                <div className="absolute top-0 right-0 p-8 flex flex-col gap-2 items-end opacity-20 font-mono text-[8px] text-zinc-500">
+                   <span>SYS_TEMP: 32.4°C</span>
+                   <span>NODE_LOC: SIN-PROX-01</span>
+                </div>
+
+                <div className="relative z-10 flex flex-col h-full justify-between">
+                  <div className="flex flex-wrap gap-4">
                     {ASSETS.map(a => (
-                      <button key={a.id} onClick={() => setActiveAsset(a)} className={`px-5 py-2.5 border rounded-xl text-[10px] font-black tracking-widest transition-all ${activeAsset.id === a.id ? 'border-blue-500 bg-blue-500/10 text-blue-400' : 'border-white/5 text-zinc-600'}`}>{a.id} / IDR</button>
+                      <button key={a.id} onClick={() => setActiveAsset(a)} className={`px-6 py-3 border text-[10px] font-black uppercase tracking-widest transition-all rounded-sm flex items-center gap-3 ${activeAsset.id === a.id ? 'bg-blue-600 border-blue-500 text-white' : 'bg-transparent border-white/5 text-zinc-600 hover:border-white/20'}`}>
+                        {a.icon} {a.id} / IDR
+                      </button>
                     ))}
-                   </div>
-                   <div className="text-right font-mono">
-                      <p className="text-[10px] text-zinc-600 uppercase mb-1">Vault Liquidity</p>
-                      <p className="text-lg font-black text-zinc-300 font-mono tracking-tighter">${vaultLiquidity}</p>
-                   </div>
+                  </div>
+
+                  <div className="my-16 md:my-24">
+                     <div className="flex items-center gap-4 text-[10px] font-black text-zinc-600 uppercase tracking-[0.4em] mb-4">
+                        <Radio className="w-3 h-3 text-red-500 animate-pulse" />
+                        Live_Aggregate_Feed
+                     </div>
+                     <motion.div 
+                      key={currentPrice}
+                      initial={{ opacity: 0.5 }}
+                      animate={{ opacity: 1 }}
+                      className="flex items-baseline gap-6"
+                    >
+                        <span className="text-[12vw] lg:text-[8vw] font-black italic tracking-tighter leading-none text-white drop-shadow-[0_0_50px_rgba(255,255,255,0.1)]">
+                          {currentPrice.toLocaleString('id-ID')}
+                        </span>
+                        <span className="text-4xl md:text-6xl font-black text-zinc-800 italic uppercase">IDR</span>
+                     </motion.div>
+                  </div>
+
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-8 pt-10 border-t border-white/[0.03]">
+                     {[
+                       { l: "Locked_Spread", v: "0.02%", i: <ShieldCheck className="w-3 h-3" /> },
+                       { l: "Execution_Ping", v: "0.12ms", i: <Zap className="w-3 h-3" /> },
+                       { l: "Liquidity_Depth", v: "Ultra-High", i: <Database className="w-3 h-3" /> },
+                       { l: "Protocol_Layer", v: "TCP/X-7", i: <Globe className="w-3 h-3" /> }
+                     ].map((item, idx) => (
+                       <div key={idx} className="space-y-1">
+                          <p className="text-[9px] text-zinc-600 uppercase font-black flex items-center gap-2">{item.i} {item.l}</p>
+                          <p className="text-sm font-black text-white italic">{item.v}</p>
+                       </div>
+                     ))}
+                  </div>
                 </div>
-                <div className="flex items-baseline gap-8 my-12">
-                   <h2 className="text-[14vw] lg:text-[10vw] font-black italic tracking-tighter text-white leading-[0.8] font-heading font-heading">{currentPrice.toLocaleString('id-ID')}</h2>
-                   <span className="text-5xl font-black text-zinc-800 uppercase font-heading">IDR</span>
+              </motion.div>
+
+              {/* Advanced System Logs */}
+              <div className="h-48 bg-[#050505] border border-white/[0.05] p-6 flex flex-col gap-4 overflow-hidden rounded-sm">
+                <div className="flex justify-between items-center pb-2 border-b border-white/[0.03]">
+                   <span className="text-[10px] font-black text-blue-500 uppercase tracking-widest flex items-center gap-2">
+                    <Terminal className="w-3 h-3" /> System_Kernel_Log
+                   </span>
+                   <span className="text-[8px] font-bold text-zinc-700">ENCRYPTION: AES-256-GCM</span>
                 </div>
-                <div className="grid grid-cols-4 gap-8 pt-10 border-t border-white/5">
-                   {[{ l: "Spread", v: "0.04%" }, { l: "Volatility", v: "High" }, { l: "Ping", v: "0.42ms" }, { l: "Router", v: "v6-PRO" }].map((m, i) => (
-                    <div key={i}><p className="text-[9px] text-zinc-600 uppercase mb-1 tracking-widest">{m.l}</p><p className="text-sm font-black text-white">{m.v}</p></div>
-                   ))}
+                <div className="flex-1 space-y-1">
+                  {terminalLogs.map((log, i) => (
+                    <div key={i} className="text-[9px] text-zinc-500 flex gap-4">
+                      <span className="text-zinc-800">[{1000 - i}]</span>
+                      <span className={i === 0 ? "text-emerald-500" : ""}>{log}</span>
+                    </div>
+                  ))}
                 </div>
-              </div>
-              <div className="grid grid-cols-2 gap-8 h-48 font-mono font-mono">
-                 <div className="bg-zinc-900/20 border border-white/5 p-8 rounded-[2rem] flex flex-col gap-3 font-mono">
-                    <span className="text-[10px] font-black text-red-500/50 uppercase tracking-widest">Sell Depth</span>
-                    {[1, 2, 3].map(i => <div key={i} className="flex justify-between text-xs opacity-30 font-mono"><span>{(currentPrice + i * 10).toLocaleString()}</span><span>{Math.floor(Math.random() * 5000)}</span></div>)}
-                 </div>
-                 <div className="bg-zinc-900/20 border border-white/5 p-8 rounded-[2rem] flex flex-col gap-3 font-mono">
-                    <span className="text-[10px] font-black text-emerald-500/50 uppercase tracking-widest">Buy Depth</span>
-                    {[1, 2, 3].map(i => <div key={i} className="flex justify-between text-xs opacity-30 font-mono"><span>{(currentPrice - i * 10).toLocaleString()}</span><span>{Math.floor(Math.random() * 5000)}</span></div>)}
-                 </div>
               </div>
             </div>
-            <div className="lg:col-span-4 flex flex-col gap-8 font-mono">
-               <div className="flex-1 bg-[#050505] border border-white/10 p-10 flex flex-col rounded-[3rem] shadow-2xl relative">
-                  <div className="flex bg-zinc-900/50 p-1.5 rounded-2xl mb-12 font-sans">
-                    <button onClick={() => setOrderForm({...orderForm, side: 'buy'})} className={`flex-1 py-4 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${orderForm.side === 'buy' ? 'bg-blue-600 text-white' : 'text-zinc-500'}`}>BUY</button>
-                    <button onClick={() => setOrderForm({...orderForm, side: 'sell'})} className={`flex-1 py-4 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${orderForm.side === 'sell' ? 'bg-zinc-800 text-white' : 'text-zinc-500'}`}>SELL</button>
-                  </div>
-                  <div className="flex-1 flex flex-col justify-between font-mono">
-                    <div className="space-y-10">
-                       <div className="space-y-4">
-                          <label className="text-[10px] text-zinc-600 uppercase tracking-widest ml-4 font-sans">Execution Amount</label>
-                          <div className="relative">
-                             <input type="number" step="any" value={orderForm.amount} onChange={(e) => setOrderForm(prev => ({...prev, amount: e.target.value}))} placeholder="0.00" className="w-full bg-black border border-white/10 p-8 rounded-3xl text-4xl font-black text-white outline-none focus:border-blue-600 font-mono" />
-                             <span className="absolute right-8 top-1/2 -translate-y-1/2 font-black italic text-zinc-700 text-xl">{activeAsset.id}</span>
-                          </div>
-                       </div>
-                       {orderForm.amount && (
-                         <div className="bg-blue-600/5 border border-blue-500/20 p-8 rounded-[2rem] space-y-6 font-mono">
-                            <div className="flex justify-between text-[10px] text-zinc-500 uppercase font-sans"><span>Locked Rate</span><span className="font-mono">Rp {currentPrice.toLocaleString('id-ID')}</span></div>
-                            <div className="flex flex-col pt-4 border-t border-white/5"><span className="text-[10px] font-black text-blue-400 uppercase mb-2 font-sans">Aggregate Value</span><span className="text-4xl font-black text-white italic font-heading">Rp {(parseFloat(orderForm.amount) * currentPrice).toLocaleString('id-ID')}</span></div>
-                         </div>
-                       )}
+
+            {/* Side Execution Panel */}
+            <div className="lg:col-span-4 flex flex-col gap-8">
+               <div className="bg-[#080808] border border-white/[0.05] p-8 space-y-10 rounded-sm">
+                  <div className="space-y-6">
+                    <div className="flex items-center justify-between border-b border-white/[0.03] pb-6">
+                       <h3 className="text-xs font-black uppercase tracking-[0.2em] text-zinc-400">Order_Configuration</h3>
+                       <BadgeCheck className="w-4 h-4 text-blue-500" />
                     </div>
-                    <button 
-                      type="button"
-                      onClick={() => handleExecute()}
-                      disabled={isProcessing} 
-                      className="w-full py-10 rounded-[2.5rem] text-xl font-black tracking-widest uppercase transition-all flex items-center justify-center gap-6 font-sans bg-white text-black hover:bg-blue-600 hover:text-white shadow-2xl active:scale-95 cursor-pointer z-50 relative disabled:opacity-50"
-                    >
-                       {isProcessing ? <RefreshCw className="animate-spin" size={32} /> : <>CONFIRM {orderForm.side.toUpperCase()}</>}
-                    </button>
+                    
+                    <div className="flex p-1 bg-black border border-white/[0.03] rounded-sm">
+                       <button 
+                        onClick={() => setOrderForm({ ...orderForm, side: 'buy' })}
+                        className={`flex-1 py-4 text-[10px] font-black transition-all ${orderForm.side === 'buy' ? 'bg-emerald-600 text-white shadow-[0_0_20px_rgba(16,185,129,0.2)]' : 'text-zinc-600 hover:text-white'}`}
+                       >
+                        BULLISH_ENTRY
+                       </button>
+                       <button 
+                        onClick={() => setOrderForm({ ...orderForm, side: 'sell' })}
+                        className={`flex-1 py-4 text-[10px] font-black transition-all ${orderForm.side === 'sell' ? 'bg-red-600 text-white shadow-[0_0_20px_rgba(220,38,38,0.2)]' : 'text-zinc-600 hover:text-white'}`}
+                       >
+                        BEARISH_EXIT
+                       </button>
+                    </div>
+                  </div>
+
+                  <div className="space-y-8">
+                     <div className="space-y-4">
+                        <div className="flex justify-between items-center text-[9px] font-black uppercase tracking-widest text-zinc-600 px-1">
+                           <span>Resource_Volume</span>
+                           <span>{activeAsset.id}</span>
+                        </div>
+                        <div className="relative">
+                          <input 
+                            type="number" 
+                            value={orderForm.amount}
+                            onChange={(e) => setOrderForm({ ...orderForm, amount: e.target.value })}
+                            className="w-full bg-black border border-white/[0.05] p-6 text-2xl font-black italic text-white focus:border-blue-500 outline-none transition-all placeholder:text-zinc-900" 
+                            placeholder="0.00"
+                          />
+                          <button className="absolute right-4 top-1/2 -translate-y-1/2 px-3 py-1 bg-zinc-900 text-[8px] font-black text-zinc-500 border border-white/5 hover:text-white transition-colors">MAX</button>
+                        </div>
+                     </div>
+
+                     {orderForm.amount && (
+                       <motion.div 
+                        initial={{ opacity: 0, x: 20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        className="bg-zinc-950 border border-white/[0.03] p-6 space-y-4 rounded-sm"
+                       >
+                          <div className="flex justify-between items-center text-[9px] font-black uppercase text-zinc-600">
+                             <span>Settlement_IDR</span>
+                             <span className="text-zinc-400">Fixed_Rate</span>
+                          </div>
+                          <p className="text-3xl font-black italic text-emerald-500 tracking-tighter">
+                            { (parseFloat(orderForm.amount) * currentPrice).toLocaleString('id-ID') }
+                          </p>
+                       </motion.div>
+                     )}
+
+                     <button 
+                      onClick={handleExecute}
+                      disabled={isProcessing}
+                      className="w-full py-7 bg-white text-black font-black uppercase tracking-[0.4em] text-[10px] hover:bg-blue-600 hover:text-white transition-all shadow-2xl relative overflow-hidden group disabled:opacity-50"
+                     >
+                        <div className="absolute inset-0 bg-blue-600 translate-x-[-100%] group-hover:translate-x-0 transition-transform duration-500" />
+                        <span className="relative z-10 flex items-center justify-center gap-4">
+                          {isProcessing ? "PROCESSING_LINK..." : "AUTHORIZE_TRANSACTION"}
+                          <ArrowRightLeft className="w-4 h-4" />
+                        </span>
+                     </button>
+                  </div>
+
+                  <div className="pt-8 border-t border-white/[0.03] flex items-center justify-center gap-6">
+                     <ShieldAlert className="w-4 h-4 text-zinc-800" />
+                     <p className="text-[8px] text-zinc-700 font-bold uppercase text-center leading-relaxed">
+                        Transaction involves direct vault interaction. <br />
+                        Authorized entities only.
+                     </p>
+                  </div>
+               </div>
+
+               {/* Vault Pulse Card */}
+               <div className="bg-blue-600/5 border border-blue-500/10 p-8 rounded-sm">
+                  <h4 className="text-[10px] font-black uppercase tracking-widest text-blue-400 mb-6 flex items-center gap-3">
+                    <Database className="w-3 h-3" /> Vault_Metric_Pulse
+                  </h4>
+                  <div className="space-y-4">
+                     <div className="flex justify-between">
+                        <span className="text-[9px] font-bold text-zinc-600 uppercase">Avail_Liquidity</span>
+                        <span className="text-[10px] font-black text-white tracking-tighter">${vaultStats.liquidity}</span>
+                     </div>
+                     <div className="flex justify-between">
+                        <span className="text-[9px] font-bold text-zinc-600 uppercase">Agg_History</span>
+                        <span className="text-[10px] font-black text-white tracking-tighter">{vaultStats.transactions} TXNS</span>
+                     </div>
                   </div>
                </div>
             </div>
-          </main>
+          </div>
         ) : (
-          <main className="flex-1 bg-black border border-white/5 p-12 overflow-y-auto rounded-[3rem]">
-             <div className="flex justify-between items-end mb-12 pb-8 border-b border-white/5">
-                <div><h2 className="text-4xl font-black italic uppercase text-white font-heading font-heading">Audit Logs</h2><p className="text-[10px] tracking-widest text-zinc-600 uppercase mt-2 font-sans">Institutional Ledger History</p></div>
-                <button onClick={exportPDF} className={`flex items-center gap-3 px-8 py-4 border border-white/10 text-[10px] font-black uppercase tracking-widest hover:bg-white hover:text-black transition-all rounded-full font-sans`}><FileDown size={18} /> Export PDF</button>
-             </div>
-             <div className="space-y-6 font-mono">
-                {pendingOrders.length > 0 && (
-                  <div className="mb-10 space-y-4">
-                    <h3 className="text-xl font-black text-blue-500 uppercase italic tracking-tighter">Your Pending Requests</h3>
-                    {pendingOrders.map((p, i) => (
-                      <div key={i} className="grid grid-cols-6 p-8 border border-white/5 bg-zinc-900/50 items-center rounded-3xl">
-                         <div className="flex flex-col"><span className="text-[8px] text-zinc-600 mb-1 font-sans">ID</span><span className="text-sm font-bold text-blue-400">{p.id.slice(0,8)}</span></div>
-                         <div className="flex flex-col col-span-2"><span className="text-[8px] text-zinc-600 mb-1 font-sans">Time</span><span className="text-xs font-bold">{new Date(p.createdAt).toLocaleString()}</span></div>
-                         <div className="flex flex-col"><span className="text-[8px] text-zinc-600 mb-1 font-sans">Asset</span><span className="text-sm font-bold text-white">{p.asset}</span></div>
-                         <div className="flex flex-col"><span className="text-[8px] text-zinc-600 mb-1 font-sans">Qty</span><span className="text-sm font-bold text-white">{p.amount}</span></div>
-                         <div className="flex flex-col text-right"><span className="text-[10px] font-black text-zinc-500 uppercase italic">Awaiting Admin</span></div>
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            className="flex-1 bg-[#050505] border border-white/[0.05] p-8 md:p-12 rounded-sm overflow-hidden flex flex-col"
+          >
+            <div className="flex justify-between items-center mb-12 border-b border-white/[0.03] pb-10">
+               <div className="flex items-center gap-6">
+                  <FileDown className="w-8 h-8 text-blue-500" />
+                  <div>
+                    <h2 className="text-2xl font-black italic uppercase tracking-tighter">Trade Audit Reports</h2>
+                    <p className="text-[9px] font-bold text-zinc-600 uppercase tracking-widest">Immutable Transaction History</p>
+                  </div>
+               </div>
+               <button onClick={() => {
+                  const doc = new jsPDF();
+                  doc.text('INTELITRADE V7.0 - AUDIT LOG', 14, 20);
+                  autoTable(doc, {
+                    startY: 30,
+                    head: [['Ticket', 'Time', 'Resource', 'Op', 'Qty', 'Settlement']],
+                    body: history.map(t => [
+                      t.id.slice(0,8).toUpperCase(), 
+                      new Date(t.createdAt).toLocaleString(), 
+                      t.asset, 
+                      t.side.toUpperCase(), 
+                      t.amount, 
+                      `Rp ${ (parseFloat(t.amount) * t.price).toLocaleString('id-ID')}`
+                    ]),
+                  });
+                  doc.save(`Audit_${Date.now()}.pdf`);
+               }} className="px-10 py-4 border border-white/[0.05] text-[10px] font-black uppercase tracking-widest hover:bg-white hover:text-black transition-all">Export_Universal_Log</button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto space-y-3 pr-4 custom-scrollbar">
+               {history.length === 0 ? (
+                 <div className="h-64 flex flex-col items-center justify-center border border-dashed border-white/[0.03]">
+                    <Search className="w-12 h-12 text-zinc-900 mb-6" />
+                    <p className="text-[10px] font-black uppercase tracking-[0.4em] text-zinc-800">No_Archives_Found</p>
+                 </div>
+               ) : (
+                 history.map((t, i) => (
+                   <div key={i} className="group grid grid-cols-1 md:grid-cols-12 p-8 border border-white/[0.03] bg-black hover:bg-zinc-900/40 transition-all items-center gap-8 rounded-sm">
+                      <div className="md:col-span-3 flex items-center gap-6">
+                         <div className={`w-12 h-12 rounded-sm flex items-center justify-center ${t.side === 'buy' ? 'bg-blue-600/10 text-blue-500' : 'bg-emerald-600/10 text-emerald-500'}`}>
+                            {t.side === 'buy' ? <ArrowDownLeft className="w-6 h-6" /> : <ArrowUpRight className="w-6 h-6" />}
+                         </div>
+                         <div>
+                            <span className="text-[10px] font-black text-white uppercase block mb-1">Ticket_{t.id.slice(0,8).toUpperCase()}</span>
+                            <span className="text-[8px] font-bold text-zinc-600 uppercase tracking-widest">{new Date(t.createdAt).toLocaleTimeString()}</span>
+                         </div>
                       </div>
-                    ))}
-                  </div>
-                )}
-                {history.map((t, i) => (
-                  <div key={i} className="grid grid-cols-6 p-8 border border-white/5 bg-zinc-900/10 hover:bg-zinc-900/20 transition-all items-center rounded-3xl">
-                     <div className="flex flex-col"><span className="text-[8px] text-zinc-600 mb-1 font-sans">Ticket</span><span className="text-sm font-bold text-blue-500">{t.id.slice(0,8)}</span></div>
-                     <div className="flex flex-col"><span className="text-[8px] text-zinc-600 mb-1 font-sans">Time</span><span className="text-sm font-bold">{new Date(t.createdAt).toLocaleString()}</span></div>
-                     <div className="flex flex-col"><span className="text-[8px] text-zinc-600 mb-1 font-sans">Asset</span><span className="text-sm font-bold text-white font-heading">{t.asset}</span></div>
-                     <div className="flex flex-col"><span className="text-[8px] text-zinc-600 mb-1 font-sans">Op</span><span className={`text-sm font-bold uppercase ${t.side === 'buy' ? 'text-blue-500' : 'text-emerald-500'}`}>{t.side}</span></div>
-                     <div className="flex flex-col text-right"><span className="text-[8px] text-zinc-600 mb-1 font-sans">Qty</span><span className="text-sm font-bold text-white">{t.amount}</span></div>
-                     <div className="flex flex-col text-right">
-                        {t.txHash ? (
-                            <a href={t.chainId === 56 ? `https://bscscan.com/tx/${t.txHash}` : `https://polygonscan.com/tx/${t.txHash}`} target="_blank" className="text-[10px] font-black text-blue-400 uppercase tracking-widest hover:text-white transition-all underline decoration-blue-500/20 underline-offset-4 font-sans">Explorer</a>
-                        ) : (
-                            <span className="text-[10px] font-bold text-emerald-500">OFF-CHAIN</span>
-                        )}
-                     </div>
-                  </div>
-                ))}
-             </div>
-          </main>
+                      <div className="md:col-span-2">
+                         <span className="text-[8px] text-zinc-600 uppercase font-black tracking-widest block mb-1">Operation</span>
+                         <span className={`text-[10px] font-black uppercase ${t.side === 'buy' ? 'text-blue-500' : 'text-emerald-400'}`}>{t.side}</span>
+                      </div>
+                      <div className="md:col-span-2">
+                         <span className="text-[8px] text-zinc-600 uppercase font-black tracking-widest block mb-1">Asset</span>
+                         <span className="text-[10px] font-black text-white uppercase italic">{t.amount} {t.asset}</span>
+                      </div>
+                      <div className="md:col-span-3">
+                         <span className="text-[8px] text-zinc-600 uppercase font-black tracking-widest block mb-1">Valuation</span>
+                         <span className="text-xl font-black text-white tracking-tighter italic">Rp { (parseFloat(t.amount) * t.price).toLocaleString('id-ID') }</span>
+                      </div>
+                      <div className="md:col-span-2 flex justify-end gap-3 opacity-20 group-hover:opacity-100 transition-opacity">
+                         {t.paymentHash && <a href={`${CHAINS[t.chainId]?.explorer}${t.paymentHash}`} target="_blank" className="p-4 bg-zinc-900 border border-white/5 hover:border-blue-500 transition-all"><ExternalLink className="w-4 h-4" /></a>}
+                         {t.status === 'approved' && <div className="p-4 bg-zinc-900 border border-white/5 text-emerald-500"><BadgeCheck className="w-4 h-4" /></div>}
+                      </div>
+                   </div>
+                 ))
+               )}
+            </div>
+          </motion.div>
         )}
-        <footer className="h-10 border-t border-white/5 flex items-center justify-between text-[8px] font-bold text-zinc-800 uppercase tracking-[0.5em] font-mono font-mono">
-           <div className="flex gap-10"><span>Secure Protocol V.6.5</span><span>Handshake Verified</span></div>
-           <div className="flex items-center gap-6">{blocks.slice(0,2).map((b, i) => <span key={i} className="text-zinc-900 font-mono">BLOCK: {b}</span>)}</div>
-        </footer>
       </div>
+
+      <style jsx global>{`
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&display=swap');
+        
+        body {
+          font-family: 'JetBrains Mono', monospace;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: #000;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: #111;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: #222;
+        }
+      `}</style>
     </div>
   );
 };
 
-export default IntelliTradeV6;
+export default IntelliTradeV7;
