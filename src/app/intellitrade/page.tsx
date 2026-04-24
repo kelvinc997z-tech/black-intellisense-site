@@ -324,13 +324,13 @@ const IntelliTradeV7 = () => {
                         onClick={() => setOrderForm({ ...orderForm, side: 'buy' })}
                         className={`flex-1 py-4 text-[10px] font-black transition-all ${orderForm.side === 'buy' ? 'bg-emerald-600 text-white shadow-[0_0_20px_rgba(16,185,129,0.2)]' : 'text-zinc-600 hover:text-white'}`}
                        >
-                        BULLISH_ENTRY
+                        BUY_ORDER
                        </button>
                        <button 
                         onClick={() => setOrderForm({ ...orderForm, side: 'sell' })}
                         className={`flex-1 py-4 text-[10px] font-black transition-all ${orderForm.side === 'sell' ? 'bg-red-600 text-white shadow-[0_0_20px_rgba(220,38,38,0.2)]' : 'text-zinc-600 hover:text-white'}`}
                        >
-                        BEARISH_EXIT
+                        SELL_ORDER
                        </button>
                     </div>
                   </div>
