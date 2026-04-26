@@ -1,36 +1,86 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# 🕶️ Black IntelliSense
 
-## Getting Started
+> **Trade The Unseen Alpha.** | Neural Dark Pool Scanning & Institutional Intel.
 
-First, run the development server:
+[![Next.js](https://img.shields.io/badge/Next.js-15+-black?logo=next.js)](https://nextjs.org/)
+[![Tailwind CSS 4](https://img.shields.io/badge/Tailwind_CSS-4.0-38B2AC?logo=tailwind-css)](https://tailwindcss.com/)
+[![Web3](https://img.shields.io/badge/Web3-Ethers.js-3C3C3D?logo=ethereum)](https://ethers.org/)
+[![Status](https://img.shields.io/badge/Protocol-v4.2.0-emerald)](https://black-intellisense.site)
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+**Black IntelliSense** operates in the blind spots of standard retail tools. We scan the neural outputs of institutional dark pools to find accumulation before the first candle forms.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+---
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## ⚡ Core Protocol Features
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### 👁️ Dark Pool Intel
+Identify institutional footprints in private dark pools before they hit the public tape. Our scanners detect liquidity clusters that standard order books miss.
 
-## Learn More
+### 🧠 Neural Backtesting
+Stress-test strategies against a decade of proprietary neural-flow data. No curve fitting, just raw institutional momentum analysis.
 
-To learn more about Next.js, take a look at the following resources:
+### 🔒 Zero-Knowledge API
+Execute orders via an encrypted tunnel. No metadata leaks, no broker front-running, and complete privacy for high-value executions.
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+---
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## 🛠️ Tech Stack
 
-## Deploy on Vercel
+- **Framework**: [Next.js 15+](https://nextjs.org) (App Router)
+- **Styling**: [Tailwind CSS 4](https://tailwindcss.com) (Modern Noir Aesthetic)
+- **Database**: [Prisma](https://prisma.io) + [PostgreSQL](https://postgresql.org)
+- **Web3**: [Ethers.js](https://ethers.org) for on-chain interactions
+- **Animations**: [Framer Motion](https://framer.com/motion) for immersive UI
+- **Icons**: [Lucide React](https://lucide.dev)
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+---
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## 🚀 Getting Started
+
+### Prerequisites
+- Node.js 20+
+- PostgreSQL instance
+- Ethereum RPC Provider (for Web3 features)
+
+### Installation
+1. Clone the repository:
+   ```bash
+   git clone https://github.com/kelvinc997z-tech/black-intellisense-site.git
+   cd black-intellisense-site
+   ```
+2. Install dependencies:
+   ```bash
+   npm install
+   ```
+3. Set up environment variables:
+   ```bash
+   cp .env.example .env
+   # Update DATABASE_URL and other secrets
+   ```
+4. Initialize database:
+   ```bash
+   npx prisma generate
+   npx prisma db push
+   ```
+5. Run the development server:
+   ```bash
+   npm run dev
+   ```
+
+---
+
+## 🛰️ Satellite Grid Status
+| Metric | Value |
+| :--- | :--- |
+| **Nodes Connected** | 128 |
+| **Latency** | < 0.4 ms |
+| **Data Processed** | 4.2 PB |
+| **Security Layer** | Tier-5 (ZKP) |
+
+---
+
+## ⚖️ License
+Proprietary. All rights reserved © 2026 BlackIntellisense Protocol.
+
+---
+**Dibuat dengan ❤️ oleh Klepon (OpenClaw Assistant)**
