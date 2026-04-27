@@ -256,31 +256,38 @@ const VaultControlPanel = () => {
                     </motion.div>
                   ) : activeTab === 'history' ? (
                     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="space-y-3">
-                        {historyOrders.map((t, i) => (
-                          <div key={i} className="group flex flex-col md:flex-row justify-between items-center p-8 border border-white/[0.03] bg-black hover:bg-zinc-900/10 transition-all gap-8">
-                             <div className="flex flex-wrap gap-12 items-center">
-                                <div className={`w-10 h-10 flex items-center justify-center rounded-sm ${t.status === 'approved' ? 'bg-emerald-600/10 text-emerald-500' : 'bg-red-600/10 text-red-500'}`}>
-                                   {t.status === 'approved' ? <CheckCircle2 size={20} /> : <XCircle size={20} />}
-                                </div>
-                                <div className="flex flex-col">
-                                   <span className="text-[8px] text-zinc-600 uppercase font-black">Ticket_ID</span>
-                                   <span className="text-[10px] font-black text-white font-mono uppercase">{t.id.slice(0,10)}</span>
-                                </div>
-                                <div className="flex flex-col">
-                                   <span className="text-[8px] text-zinc-600 uppercase font-black">Operation_Payload</span>
-                                   <span className="text-xs font-black text-white italic">{t.amount} {t.asset}</span>
-                                </div>
-                                <div className="flex flex-col">
-                                   <span className="text-[8px] text-zinc-600 uppercase font-black">Authorized_At</span>
-                                   <span className="text-[10px] font-bold text-zinc-500">{new Date(t.createdAt).toLocaleString()}</span>
-                                </div>
-                             </div>
-                             <div className="flex gap-3">
-                                {t.paymentHash && <a href={`${CHAINS[t.chainId]?.explorer}${t.paymentHash}`} target="_blank" className="p-4 bg-zinc-900 border border-white/5 hover:border-emerald-500 transition-all" title="View Inbound"><LinkIcon size={12} /></a>}
-                                {t.txHash && <a href={`${CHAINS[t.chainId]?.explorer}${t.txHash}`} target="_blank" className="p-4 bg-zinc-900 border border-white/5 hover:border-emerald-500 transition-all" title="View Outbound"><ExternalLink size={12} /></a>}
-                             </div>
+                        {historyOrders.length === 0 ? (
+                          <div className="h-64 flex flex-col items-center justify-center border border-dashed border-white/5 rounded-sm">
+                             <Search className="text-zinc-900 mb-4" size={40} />
+                             <p className="text-[10px] text-zinc-800 font-black uppercase tracking-[0.4em]">No_Archives_Found</p>
                           </div>
-                        ))}
+                        ) : (
+                          historyOrders.map((t, i) => (
+                            <div key={i} className="group flex flex-col md:flex-row justify-between items-center p-8 border border-white/[0.03] bg-black hover:bg-zinc-900/10 transition-all gap-8">
+                               <div className="flex flex-wrap gap-12 items-center">
+                                  <div className={`w-10 h-10 flex items-center justify-center rounded-sm ${t.status === 'approved' ? 'bg-emerald-600/10 text-emerald-500' : 'bg-red-600/10 text-red-500'}`}>
+                                     {t.status === 'approved' ? <CheckCircle2 size={20} /> : <XCircle size={20} />}
+                                  </div>
+                                  <div className="flex flex-col">
+                                     <span className="text-[8px] text-zinc-600 uppercase font-black">Ticket_ID</span>
+                                     <span className="text-[10px] font-black text-white font-mono uppercase">{t.id.slice(0,10)}</span>
+                                  </div>
+                                  <div className="flex flex-col">
+                                     <span className="text-[8px] text-zinc-600 uppercase font-black">Operation_Payload</span>
+                                     <span className="text-xs font-black text-white italic">{t.amount} {t.asset}</span>
+                                  </div>
+                                  <div className="flex flex-col">
+                                     <span className="text-[8px] text-zinc-600 uppercase font-black">Authorized_At</span>
+                                     <span className="text-[10px] font-bold text-zinc-500">{new Date(t.createdAt).toLocaleString()}</span>
+                                  </div>
+                               </div>
+                               <div className="flex gap-3">
+                                  {t.paymentHash && <a href={`${CHAINS[t.chainId]?.explorer}${t.paymentHash}`} target="_blank" className="p-4 bg-zinc-900 border border-white/5 hover:border-emerald-500 transition-all" title="View Inbound"><LinkIcon size={12} /></a>}
+                                  {t.txHash && <a href={`${CHAINS[t.chainId]?.explorer}${t.txHash}`} target="_blank" className="p-4 bg-zinc-900 border border-white/5 hover:border-emerald-500 transition-all" title="View Outbound"><ExternalLink size={12} /></a>}
+                               </div>
+                            </div>
+                          ))
+                        )}
                     </motion.div>
                   ) : (
                     <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} className="grid grid-cols-1 md:grid-cols-2 gap-12">
